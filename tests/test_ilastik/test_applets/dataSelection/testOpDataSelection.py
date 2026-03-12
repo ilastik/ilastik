@@ -1353,3 +1353,58 @@ def test_cleanup(data_path, graph):
 
     # Then
     assert len(reader.children) == children_after_load, "Did not clean up all children after input change"
+
+
+import pytest
+
+from ilastik.applets.dataSelection.opDataSelection import nickname_from_url
+
+
+def test_urldatasetinfo_has_nickname_helper():
+    """Ensure UrlDatasetInfo exposes the legacy `_nickname_from_url` attribute.
+
+    This guards the backward-compatibility shim added to `opDataSelection.py` so
+    that legacy consumers (and tests) that reference this attribute continue to work.
+    """
+    from ilastik.applets.dataSelection.opDataSelection import UrlDatasetInfo
+
+    assert hasattr(UrlDatasetInfo, "_nickname_from_url")
+    assert callable(getattr(UrlDatasetInfo, "_nickname_from_url"))
+
+
+@pytest.mark.parametrize(
+    "uri,expected",
+    [
+        ("file:///C:/Users/me/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/", "multiscale"),
+        ("file:///C:/Users/me/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale/", "container-multiscale"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale", "container-multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr", "multiscale"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("file:///C:/Users/me/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("file:///C:/Users/me/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/", "multiscale"),
+        ("https://some.example.org/s3/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale/", "container-multiscale"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale", "container-multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr", "multiscale"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr", "multiscale"),
+        ("https://some.example.org/s3/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.ome.zarr/multiscale/scale1", "container-multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.zarr/scale1", "multiscale-scale1"),
+        ("https://some.example.org/s3/container.zarr/multiscale.ome.zarr/scale1", "multiscale-scale1"),
+    ],
+)
+def test_urldatasetinfo_nickname_all_equal(uri, expected):
+    assert nickname_from_url(uri) == expected
+

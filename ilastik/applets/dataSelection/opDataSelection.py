@@ -54,6 +54,9 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
+# Backwards-compatibility shim: expose the canonical nickname helper from the
+# dedicated module so legacy callers can import it from opDataSelection.
+from .url_nickname import nickname_from_url as nickname_from_url
 
 
 def getTypeRange(numpy_type):
@@ -561,6 +564,8 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         self.url = url
         op_reader = OpInputDataReader(graph=Graph(), FilePath=self.url)
         meta = op_reader.Output.meta.copy()
+        # remember whether nickname was auto-generated so we don't overwrite user edits
+        self._auto_nickname = not bool(nickname)
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self._nickname_from_url(url),
@@ -631,20 +636,41 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
             if eq_shapes(shape, target_shape):
                 self.working_scale = scale
                 self.laneShape = tuple(self.scales[scale].values())
+                # If nickname was auto-generated, update it to include the chosen scale/internal path
+                try:
+                    if getattr(self, "_auto_nickname", False):
+                        self._update_nickname()
+                except Exception:
+                    pass
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
     @staticmethod
     def _nickname_from_url(url: str) -> str:
+        # Delegate to the canonical helper in url_nickname.py. This avoids
+        # duplicating nickname logic (and any special-cases) here so the
+        # behavior remains consistent across callers and tests.
+        return nickname_from_url(url)
+
+    def _update_nickname(self) -> None:
         """
-        Take the part after the last /, make it safe for use as a file name,
-        remove anything that looks like an extension ('.zarr') and replace remaining dots
-        to ensure exporting logic does not mistake them for file extensions.
+        Recompute an automatic nickname to reflect the current working_scale or internal path.
+        Only updates if this DatasetInfo was created with an auto-generated nickname.
         """
-        last_url_component = url.rstrip("/").rpartition("/")[2]
-        filename_safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", last_url_component)
-        extensionless = os.path.splitext(filename_safe)[0]
-        return extensionless
+        if not getattr(self, "_auto_nickname", False):
+            return
+        # Start from the base URL without trailing slashes.
+        base_url = self.url.rstrip("/")
+        # If an explicit working_scale is set and not the default, treat it as an internal path
+        # component and let _nickname_from_url() derive a consistent nickname from the combined URL.
+        if getattr(self, "working_scale", None) and self.working_scale != DEFAULT_SCALE_KEY:
+            internal = self.working_scale.lstrip("/")
+            url_with_internal = f"{base_url}/{internal}" if internal else base_url
+            self.nickname = type(self)._nickname_from_url(url_with_internal)
+            return
+        # Otherwise, derive the nickname directly from the URL, which may already contain
+        # an internal path component.
+        self.nickname = type(self)._nickname_from_url(base_url)
 
 
 class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
@@ -677,7 +703,12 @@ class UrlDatasetInfo(MultiscaleUrlDatasetInfo):
 
         deserialized = super().from_h5_group(group)
         remote_source = RESTfulPrecomputedChunkedVolume(deserialized.url)
-        deserialized.nickname = cls._nickname_from_url(deserialized.nickname)
+        # Normalize legacy nicknames to the canonical form derived from the URL.
+        # Old projects sometimes stored abbreviated nicknames (e.g. a port number "8000").
+        # We want UrlDatasetInfo (legacy) to be equivalent to MultiscaleUrlDatasetInfo,
+        # so generate the canonical nickname from the dataset's URL instead of reusing
+        # the possibly-legacy stored nickname string.
+        deserialized.nickname = cls._nickname_from_url(deserialized.url)
         deserialized.working_scale = remote_source.highest_resolution_key
         deserialized.scale_locked = True
         return deserialized
@@ -921,6 +952,15 @@ class OpDataSelection(Operator):
                 datasetInfo.axis_units = data_provider.meta.axis_units
                 datasetInfo.scales = data_provider.meta.scales
                 datasetInfo.working_scale = data_provider.meta.active_scale
+                # If this is a multiscale URL dataset and its nickname was auto-generated,
+                # refresh the nickname to reflect the active/internal path (e.g. container-s1).
+                try:
+                    # avoid importing name at top-level; class is defined in this module
+                    if isinstance(datasetInfo, MultiscaleUrlDatasetInfo) and getattr(datasetInfo, "_auto_nickname", False):
+                        datasetInfo._update_nickname()
+                except Exception:
+                    # best-effort: don't fail setup due to nickname update
+                    pass
 
             output_order = self._get_output_axis_order(data_provider)
             # Export applet assumes this OpReorderAxes exists.
