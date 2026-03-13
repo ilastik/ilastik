@@ -20,7 +20,6 @@ from __future__ import print_function
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 import ilastik.ilastik_logging
 
 ilastik.ilastik_logging.default_config.init()
@@ -31,6 +30,7 @@ import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import (
     OpRelabelSegmentation,
+    OpMultiRelabelSegmentation,
     OpObjectTrain,
     OpObjectPredict,
     OpObjectClassification,
@@ -93,6 +93,79 @@ class TestOpRelabelSegmentation(unittest.TestCase):
         assert np.all(img[1, 0:10, 0:10, 0:10, 0] == 50)
         assert np.all(img[1, 10:20, 10:20, 10:20, 0] == 60)
         assert np.all(img[1, 20:25, 20:25, 20:25, 0] == 70)
+
+
+class TestOpMultiRelabelSegmentation(unittest.TestCase):
+    def setUp(self):
+        g = Graph()
+        self.op = OpMultiRelabelSegmentation(graph=g)
+        segimg = segImage()
+        self.op.Image.setValue(segimg)
+
+    def test_relabel(self):
+
+        maps = [
+            {0: np.array([10, 20, 30]), 1: np.array([40, 50, 60, 70])},
+            {0: np.array([100, 200, 300]), 1: np.array([400, 500, 600, 700])},
+        ]
+        self.op.ObjectMaps.resize(len(maps))
+        for i, map_ in enumerate(maps):
+            self.op.ObjectMaps[i].setValue(map_)
+        self.op.Features._setReady()  # hack because we do not use features
+        img = self.op.Output[0].value
+
+        assert img[0, 49, 49, 49, 0] == 10
+        assert img[1, 49, 49, 49, 0] == 40
+        assert np.all(img[0, 0:10, 0:10, 0:10, 0] == 20)
+        assert np.all(img[0, 20:25, 20:25, 20:25, 0] == 30)
+        assert np.all(img[1, 0:10, 0:10, 0:10, 0] == 50)
+        assert np.all(img[1, 10:20, 10:20, 10:20, 0] == 60)
+        assert np.all(img[1, 20:25, 20:25, 20:25, 0] == 70)
+
+        img = self.op.Output[1].value
+        assert img[0, 49, 49, 49, 0] == 100
+        assert img[1, 49, 49, 49, 0] == 400
+        assert np.all(img[0, 0:10, 0:10, 0:10, 0] == 200)
+        assert np.all(img[0, 20:25, 20:25, 20:25, 0] == 300)
+        assert np.all(img[1, 0:10, 0:10, 0:10, 0] == 500)
+        assert np.all(img[1, 10:20, 10:20, 10:20, 0] == 600)
+        assert np.all(img[1, 20:25, 20:25, 20:25, 0] == 700)
+
+    def test_resize(self):
+        """
+        resizing used to preserve past operators
+        https://github.com/ilastik/ilastik/issues/3158
+        """
+        maps = [{}, {}]
+        self.op.ObjectMaps.resize(len(maps))
+        for i, map_ in enumerate(maps):
+            self.op.ObjectMaps[i].setValue(map_)
+        self.op.Features._setReady()  # hack because we do not use features
+
+        assert len(self.op._innerOperators) == len(maps)
+
+        maps = [{}, {}, {}]
+        self.op.ObjectMaps.resize(len(maps))
+        for i, map_ in enumerate(maps):
+            self.op.ObjectMaps[i].setValue(map_)
+
+        assert len(self.op._innerOperators) == len(maps)
+
+        maps = [{0: np.array([100, 200, 300]), 1: np.array([400, 500, 600, 700])}]
+        self.op.ObjectMaps.resize(len(maps))
+        for i, map_ in enumerate(maps):
+            self.op.ObjectMaps[i].setValue(map_)
+
+        assert len(self.op._innerOperators) == len(maps)
+
+        img = self.op.Output[0].value
+        assert img[0, 49, 49, 49, 0] == 100
+        assert img[1, 49, 49, 49, 0] == 400
+        assert np.all(img[0, 0:10, 0:10, 0:10, 0] == 200)
+        assert np.all(img[0, 20:25, 20:25, 20:25, 0] == 300)
+        assert np.all(img[1, 0:10, 0:10, 0:10, 0] == 500)
+        assert np.all(img[1, 10:20, 10:20, 10:20, 0] == 600)
+        assert np.all(img[1, 20:25, 20:25, 20:25, 0] == 700)
 
 
 class TestOpObjectTrain(unittest.TestCase):

@@ -1497,12 +1497,22 @@ class OpMultiRelabelSegmentation(Operator):
 
     def setupOutputs(self):
         nmaps = len(self.ObjectMaps)
+
+        for i, oslot in enumerate(self.Output):
+            oslot.disconnect()
+
+        for op in self._innerOperators:
+            op.cleanUp()
+
+        self._innerOperators = []
+
         for islot in self.ObjectMaps:
             op = OpRelabelSegmentation(parent=self)
             op.Image.connect(self.Image)
             op.ObjectMap.connect(islot)
             op.Features.connect(self.Features)
             self._innerOperators.append(op)
+
         self.Output.resize(nmaps)
         for i, oslot in enumerate(self.Output):
             oslot.connect(self._innerOperators[i].Output)
