@@ -2,7 +2,6 @@ import configparser
 from unittest.mock import patch
 
 import pytest
-from qtpy.QtWidgets import QMessageBox
 from qtpy.QtCore import Qt
 
 from ilastik.shell.gui.awsCredentialsDialog import AwsCredentialsDialog
@@ -12,7 +11,6 @@ from ilastik.shell.gui.awsCredentialsDialog import AwsCredentialsDialog
 def dialog(qtbot):
     dlg = AwsCredentialsDialog()
     qtbot.addWidget(dlg)
-    dlg.show()
     qtbot.waitExposed(dlg)
     return dlg
 
@@ -104,13 +102,21 @@ def test_modify_alternative_profile(dialog, qtbot, tmp_path, aws_dir):
         assert new_config["alt_profile"]["aws_secret_access_key"] == "new_alt_secret"
 
 
-def test_on_ok_handles_empty_fields(dialog, qtbot, tmp_path):
-    dialog.profile_input.clear()
-    dialog.access_key_input.clear()
-    dialog.secret_key_input.clear()
+@pytest.mark.parametrize(
+    "text_input",
+    [
+        "profile_input",
+        "access_key_input",
+        "secret_key_input",
+    ],
+)
+def test_validation_disables_on_any_empty_field(dialog, qtbot, tmp_path, text_input):
+    input_widget = getattr(dialog, text_input)
+    input_widget.clear()
 
-    with patch("pathlib.Path.home", return_value=tmp_path):
-        with patch.object(QMessageBox, "warning", return_value=QMessageBox.Ok) as mock_warning:
-            qtbot.mouseClick(dialog.ok_button, Qt.MouseButton.LeftButton)
-            mock_warning.assert_called_once()
-            assert "All fields are required" in mock_warning.call_args[0][2]
+    assert not dialog.ok_button.isEnabled()
+    assert "red" in input_widget.styleSheet()
+
+    qtbot.mouseClick(dialog.ok_button, Qt.MouseButton.LeftButton)
+    is_accepted = bool(dialog.result())
+    assert not is_accepted
