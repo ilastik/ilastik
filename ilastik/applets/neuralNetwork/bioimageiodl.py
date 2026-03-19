@@ -1,10 +1,13 @@
 import io
-from typing import Any, Callable, Dict
-
-from qtpy.QtCore import QThread, Signal
-from bioimageio.spec import ValidationContext, get_resource_package_content
-from tqdm.auto import tqdm as std_tqdm
 import logging
+from pathlib import Path
+from typing import Any, Callable, Dict
+from zipfile import BadZipfile, ZipFile
+
+from bioimageio.spec import ValidationContext, get_resource_package_content
+from bioimageio.spec._internal.io_basics import BIOIMAGEIO_YAML
+from qtpy.QtCore import QThread, Signal
+from tqdm.auto import tqdm as std_tqdm
 
 logger = logging.getLogger(__file__)
 
@@ -32,6 +35,20 @@ class TqdmExt(std_tqdm):
         if displayed and self._cb:
             self._cb(**self.format_dict)
         return displayed
+
+
+def _is_existing_local_zip_file(uri: Path):
+    if not (uri.exists() and uri.is_file() and uri.suffix.lower() == ".zip"):
+        return False
+
+    try:
+        z = ZipFile(uri)
+    except BadZipfile:
+        return False
+    else:
+        z.close()
+
+    return True
 
 
 class BioImageDownloader(QThread):
@@ -88,7 +105,17 @@ class BioImageDownloader(QThread):
 
             # this can take time, use a progress dialog or a busy cursor
             model_binary = io.BytesIO()
-            save_bioimageio_package_to_stream(rd, output_stream=model_binary)
+
+            # Workaround for bioimageio.spec issue: https://github.com/bioimage-io/spec-bioimage-io/issues/744
+            if _is_existing_local_zip_file(Path(self._model_uri)):
+                with ZipFile(self._model_uri) as zf:
+                    save_bioimageio_package_to_stream(
+                        zf, output_stream=model_binary, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY
+                    )
+            else:
+                save_bioimageio_package_to_stream(
+                    rd, output_stream=model_binary, weights_priority_order=BIOIMAGEIO_WEIGHTS_PRIORITY
+                )
 
             self.dataAvailable.emit(model_binary.getvalue())
         except DownloadCancelled:
