@@ -18,12 +18,22 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import configparser
 import os
 import shutil
 from pathlib import Path
-import configparser
 
-from qtpy.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QFormLayout
+from qtpy.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QFormLayout,
+    QDialogButtonBox,
+    QCheckBox,
+)
 
 
 def _get_creds_path() -> Path:
@@ -71,25 +81,36 @@ class AwsCredentialsDialog(QDialog):
 
         form.addRow(profile_label, self.profile_input)
         form.addRow(access_key_label, self.access_key_input)
-        form.addRow(secret_key_label, self.secret_key_input)
+
+        self.toggle_secret_button = QCheckBox("Show secret")
+
+        secret_layout = QVBoxLayout()
+        secret_layout.addWidget(self.secret_key_input)
+        secret_layout.addWidget(self.toggle_secret_button)
+
+        self.secret_key_input.setEchoMode(QLineEdit.Password)
+        self.toggle_secret_button.toggled.connect(self._toggle_secret_visibility)
+        form.addRow(secret_key_label, secret_layout)
 
         layout.addLayout(form)
 
         self._fields = [self.profile_input, self.access_key_input, self.secret_key_input]
 
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(self.button_box)
         buttons = QHBoxLayout()
-        self.ok_button = QPushButton("OK")
-        self.cancel_button = QPushButton("Cancel")
-        buttons.addWidget(self.ok_button)
-        buttons.addWidget(self.cancel_button)
+        self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
         layout.addLayout(buttons)
 
-        self.ok_button.clicked.connect(self.on_ok)
-        self.cancel_button.clicked.connect(self.reject)
+        self.button_box.accepted.connect(self.on_ok)
+        self.button_box.rejected.connect(self.reject)
 
     def connect_validation(self):
         for field in self._fields:
             field.textChanged.connect(self.validate_inputs)
+
+    def _toggle_secret_visibility(self, checked):
+        self.secret_key_input.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
 
     def validate_inputs(self):
         all_valid = True
