@@ -55,7 +55,7 @@ dependencies:
   # - pytorch=*=*cuda*
   - pytorch 2.7.*
   - torchvision>=0.21
-  - tiktorch 26.2.1
+  - tiktorch 26.3.0
 
   # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
   - pytorch-3dunet 1.9.2
