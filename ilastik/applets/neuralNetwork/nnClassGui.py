@@ -20,12 +20,13 @@
 ###############################################################################
 import logging
 import os
+import pathlib
+import shutil
 import traceback
 from collections import OrderedDict
 from functools import partial
 
 import numpy
-import yaml
 from qtpy import uic
 from qtpy.QtCore import (
     QModelIndex,
@@ -33,20 +34,14 @@ from qtpy.QtCore import (
     QStringListModel,
     Qt,
     QTimer,
+    QUrl,
     Signal,
     Slot,
 )
-from qtpy.QtGui import QColor, QIcon
+from qtpy.QtGui import QColor, QDesktopServices, QIcon
 from qtpy.QtWidgets import (
     QAction,
     QColorDialog,
-    QComboBox,
-    QDesktopWidget,
-    QDialog,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -73,175 +68,6 @@ def _listReplace(old, new):
         return new + old[len(new) :]
     else:
         return new
-
-
-class ParameterDlg(QDialog):
-    """
-    simple window for setting parameters
-    """
-
-    def __init__(self, parent):
-        self.hparams = None
-
-        super(QDialog, self).__init__(parent=parent)
-
-        self.optimizer_combo = QComboBox(self)
-        self.optimizer_combo.addItem("Adam")
-        self.optimizer_kwargs_textbox = QLineEdit()
-        self.optimizer_kwargs_textbox.setPlaceholderText(
-            "e.g. for Adam: {'lr': 0.0003, 'weight_decay':0.0001, amsgrad: True}"
-        )
-
-        self.criterion_combo = QComboBox(self)
-        self.criterion_combo.addItem("BCEWithLogitsLoss")
-        self.criterion_kwargs_textbox = QLineEdit()
-        self.criterion_kwargs_textbox.setPlaceholderText("e.g.: {'reduce': False}")
-
-        self.batch_size_textbox = QLineEdit()
-        self.batch_size_textbox.setPlaceholderText("default: 1")
-
-        grid = QGridLayout()
-        grid.setSpacing(10)
-
-        grid.addWidget(QLabel("Optimizer"), 1, 0)
-        grid.addWidget(self.optimizer_combo, 1, 1)
-
-        grid.addWidget(QLabel("Optimizer keyword arguments"), 2, 0)
-        grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
-
-        grid.addWidget(QLabel("Criterion"), 3, 0)
-        grid.addWidget(self.criterion_combo, 3, 1)
-
-        grid.addWidget(QLabel("Criterion keyword arguments"), 4, 0)
-        grid.addWidget(self.criterion_kwargs_textbox, 4, 1)
-
-        grid.addWidget(QLabel("Batch size"), 5, 0)
-        grid.addWidget(self.batch_size_textbox, 5, 1)
-
-        okButton = QPushButton("OK")
-        okButton.clicked.connect(self.readParameters)
-        cancelButton = QPushButton("Cancel")
-        cancelButton.clicked.connect(self.close)
-
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(okButton)
-        hbox.addWidget(cancelButton)
-
-        vbox = QVBoxLayout()
-        vbox.addLayout(grid)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-        # self.resize(480, 200)
-        self.setFixedSize(600, 200)
-        self.center()
-
-        self.setWindowTitle("Hyperparameter Settings")
-        self.show()
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-
-        self.move(qr.topLeft())
-
-    def readParameters(self):
-        optimizer = self.optimizer_combo.currentText()
-        optimizer_kwargs = yaml.load(self.optimizer_kwargs_textbox.text())
-        if optimizer_kwargs is None:
-            optimizer_kwargs = dict(lr=0.0003, weight_decay=0.0001, amsgrad=True)
-            optimizer = "Adam"
-        criterion = self.criterion_combo.currentText()
-        criterion_kwargs = yaml.load(self.criterion_kwargs_textbox.text())
-        if criterion_kwargs is None:
-            criterion_kwargs = dict(reduce=False)
-            criterion = "BCEWithLogitsLoss"
-        batch_size = int(self.batch_size_textbox.text()) if len(self.batch_size_textbox.text()) > 0 else 1
-
-        self.hparams = dict(
-            optimizer_kwargs=optimizer_kwargs,
-            optimizer_name=optimizer,
-            criterion_kwargs=criterion_kwargs,
-            criterion_name=criterion,
-            batch_size=batch_size,
-        )
-
-        self.close()
-
-
-class ValidationDlg(QDialog):
-    """
-    Settings for choosing the validation set
-    """
-
-    def __init__(self, parent):
-        self.valid_params = None
-
-        super(QDialog, self).__init__(parent=parent)
-
-        self.validation_size = QComboBox(self)
-        self.validation_size.addItem("10%")
-        self.validation_size.addItem("20%")
-        self.validation_size.addItem("30%")
-        self.validation_size.addItem("40%")
-
-        self.orientation = QComboBox(self)
-        self.orientation.addItem("Top - Left")
-        self.orientation.addItem("Top - Right")
-        self.orientation.addItem("Top - Mid")
-        self.orientation.addItem("Mid - Left")
-        self.orientation.addItem("Mid - Right")
-        self.orientation.addItem("Mid - Mid")
-        self.orientation.addItem("Bottom - Left")
-        self.orientation.addItem("Bottom - Right")
-        self.orientation.addItem("Bottom - Mid")
-
-        grid = QGridLayout()
-        grid.setSpacing(10)
-
-        grid.addWidget(QLabel("Validation Set Size"), 1, 0)
-        grid.addWidget(self.validation_size, 1, 1)
-
-        grid.addWidget(QLabel("Orientation"), 2, 0)
-        grid.addWidget(self.orientation, 2, 1)
-
-        okButton = QPushButton("OK")
-        okButton.clicked.connect(self.readParameters)
-        cancelButton = QPushButton("Cancel")
-        cancelButton.clicked.connect(self.close)
-
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(okButton)
-        hbox.addWidget(cancelButton)
-
-        vbox = QVBoxLayout()
-        vbox.addLayout(grid)
-        vbox.addLayout(hbox)
-
-        self.setLayout(vbox)
-
-        self.center()
-
-        self.setWindowTitle("Validation Set Settings")
-        self.show()
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-
-        self.move(qr.topLeft())
-
-    def readParameters(self):
-        percentage = self.validation_size.currentText()[:-1]
-        orientation = self.orientation.currentText()
-        self.valid_params = dict(percentage=percentage, orientation=orientation)
-
-        self.close()
 
 
 class CheckpointManager:
@@ -373,37 +199,54 @@ class NNClassGui(LabelingGui):
         """
         menus = super(NNClassGui, self).menus()
 
-        advanced_menu = QMenu("TikTorch", parent=self)
+        nn_menu = QMenu("Neural Network", parent=self)
 
-        def settingParameter():
-            """
-            changing BatchSize
-            """
-            dlg = ParameterDlg(parent=self)
-            dlg.exec_()
+        def _get_bioimageio_cache_path() -> pathlib.Path:
+            # Note: bioimageio imports are delayed to prevent https requests on startup
+            try:
+                from bioimageio.spec._internal.settings import settings as bioimageio_settings
 
-            self.topLevelOperatorView.update_config(dlg.hparams)
+                return pathlib.Path(bioimageio_settings.cache_path)
+            except (ImportError, AttributeError):
+                import platformdirs
 
-        set_parameter = advanced_menu.addAction("Set hyperparameters")
-        set_parameter.triggered.connect(settingParameter)
+                return pathlib.Path(platformdirs.user_cache_dir("bioimageio"))
 
-        def object_wizard():
-            wizard = MagicWizard()
-            wizard.show()
-            wizard.exec_()
+        def open_cache_folder():
+            cache_path = _get_bioimageio_cache_path()
+            if not cache_path.exists():
+                QMessageBox.information(
+                    self,
+                    "Cache Folder",
+                    f"The bioimageio cache folder does not exist yet:\n{cache_path}",
+                )
+                return
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(cache_path)))
 
-        advanced_menu.addAction("Create TikTorch configuration").triggered.connect(object_wizard)
+        def delete_cache_folder():
+            cache_path = _get_bioimageio_cache_path()
+            if not cache_path.exists():
+                QMessageBox.information(
+                    self,
+                    "Cache Folder",
+                    f"The bioimageio cache folder does not exist:\n{cache_path}",
+                )
+                return
+            reply = QMessageBox.question(
+                self,
+                "Delete Cache Folder",
+                f"Are you sure you want to delete the bioimageio cache folder?\n{cache_path}",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                shutil.rmtree(cache_path)
+                QMessageBox.information(self, "Cache Folder", "Cache folder deleted successfully.")
 
-        def validationMenu():
-            """
-            set up the validation Menu
-            """
-            dlg = ValidationDlg(parent=self)
-            dlg.exec_()
+        nn_menu.addAction("Open bioimageio cache folder").triggered.connect(open_cache_folder)
+        nn_menu.addAction("Delete cache folder").triggered.connect(delete_cache_folder)
 
-        advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
-
-        menus += [advanced_menu]
+        menus += [nn_menu]
 
         return menus
 
