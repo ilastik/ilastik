@@ -154,10 +154,10 @@ class BatchProcessingApplet(Applet):
             for batch_index, lane_config in enumerate(lane_configs):
 
                 def lerpProgressSignal(a, b, p):
-                    self.progressSignal((100 - p) * a + p * b)
+                    self.progressSignal(a + (b - a) * (p / 100))
 
-                global_progress_start = batch_index / len(lane_configs)
-                global_progress_end = (batch_index + 1) / len(lane_configs)
+                global_progress_start = (batch_index / len(lane_configs)) * 100
+                global_progress_end = ((batch_index + 1) / len(lane_configs)) * 100
 
                 result = self.export_dataset(
                     lane_config,
