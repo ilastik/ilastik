@@ -63,6 +63,23 @@ from .tiktorchController import ALLOW_TRAINING, TiktorchOperatorModel
 logger = logging.getLogger(__name__)
 
 
+def get_bioimageio_cache_path() -> pathlib.Path:
+    """Return the bioimageio cache directory path.
+
+    Reads the path from bioimageio.spec settings if available,
+    falling back to the platform user cache directory.
+    Note: bioimageio imports are delayed to prevent https requests on startup.
+    """
+    try:
+        from bioimageio.spec._internal.settings import settings as bioimageio_settings
+
+        return pathlib.Path(bioimageio_settings.cache_path)
+    except (ImportError, AttributeError):
+        import platformdirs
+
+        return pathlib.Path(platformdirs.user_cache_dir("bioimageio"))
+
+
 def _listReplace(old, new):
     if len(old) > len(new):
         return new + old[len(new) :]
@@ -201,19 +218,8 @@ class NNClassGui(LabelingGui):
 
         nn_menu = QMenu("Neural Network", parent=self)
 
-        def _get_bioimageio_cache_path() -> pathlib.Path:
-            # Note: bioimageio imports are delayed to prevent https requests on startup
-            try:
-                from bioimageio.spec._internal.settings import settings as bioimageio_settings
-
-                return pathlib.Path(bioimageio_settings.cache_path)
-            except (ImportError, AttributeError):
-                import platformdirs
-
-                return pathlib.Path(platformdirs.user_cache_dir("bioimageio"))
-
-        def open_cache_folder():
-            cache_path = _get_bioimageio_cache_path()
+        def open_cache_folder():  # pragma: no cover
+            cache_path = get_bioimageio_cache_path()
             if not cache_path.exists():
                 QMessageBox.information(
                     self,
@@ -223,8 +229,8 @@ class NNClassGui(LabelingGui):
                 return
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(cache_path)))
 
-        def delete_cache_folder():
-            cache_path = _get_bioimageio_cache_path()
+        def delete_cache_folder():  # pragma: no cover
+            cache_path = get_bioimageio_cache_path()
             if not cache_path.exists():
                 QMessageBox.information(
                     self,
