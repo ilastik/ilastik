@@ -12,7 +12,7 @@
 [![Code style: black][black-img]][black-url]
 
 Leverage machine learning algorithms to easily segment, classify, track and count your cells or other experimental data.
-Most operations are interactive, even on large datasets: you just draw the labels and immediately see the result.
+Most operations are interactive, even when working with large datasets: you just draw the labels and immediately see the result.
 **No machine learning expertise required.**
 
 ![Screenshot][screenshot]
@@ -33,7 +33,7 @@ See [ilastik.org](https://ilastik.org) for more info and [downloads][download-pa
 
 Go to the [download page][download-page], get the latest _non-beta_ version for your operating system, and follow the [installation instructions][how-to-install].
 If you are new to ilastik, we suggest to start from the [pixel classification workflow][pixel-classification].
-If you don't have a dataset to work with, download one of the example projects to get started.
+If you do not have a dataset to work with, download one of the example projects to get started.
 
 ### Conda installation (experimental)
 
@@ -52,7 +52,7 @@ ilastik
 
 The current version of ilastik (up to the stable release `1.4.1`) is developed for Python `3.9`.
 Versions of ilastik until `1.4.1b2` are based on, and only compatible with Python `3.7`
-Starting from ilastik `1.4.1b3` ilastik environments can be created with Python versions `3.7` to `3.9`.
+Starting from ilastik `1.4.1b3` , ilastik environments can be created with Python versions `3.7` to `3.9`.
 Limitations when going with Python `3.7`: please use a version of tifffile `>2020.9.22,<=2021.11.2` (see also note in [environment-dev.yml](dev/environment-dev.yml)).
 
 
@@ -60,7 +60,7 @@ Limitations when going with Python `3.7`: please use a version of tifffile `>202
 
 ilastik is a collection of workflows, designed to guide you through a sequence of steps.
 You can select a new workflow, or load an existing one, via the [startup screen][startup].
-The specific steps vary between workflows, but there are some common elements like [data selection][data-selection] and [data navigation][data-navigation].
+The specific steps vary between workflows, but there are some common elements such as [data selection][data-selection] and [data navigation][data-navigation].
 See more details on the [documentation page][documentation].
 
 ## Support
