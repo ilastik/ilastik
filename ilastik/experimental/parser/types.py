@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
+from codecs import decode
 from collections import OrderedDict
 from pathlib import Path
 from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
@@ -42,6 +43,38 @@ from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVector
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
 LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
+
+WorkflowName = Literal[
+    "Animal Conservation Tracking Workflow from Binary Image",
+    "Animal Conservation Tracking Workflow from Prediction Image",
+    "AutocontextTwoStage",
+    "Automatic Tracking Workflow (Conservation Tracking) from binary image",
+    "Automatic Tracking Workflow (Conservation Tracking) from prediction image",
+    "Carving",
+    "Cell Density Counting",
+    "Data Conversion",
+    "Edge Training With Multicut",
+    "Manual Tracking Workflow",
+    "Neural Network Classification (Local)",
+    "Neural Network Classification (Remote)",
+    "Object Classification (from binary image)",
+    "Object Classification (from label image)",
+    "Object Classification (from pixel classification)",
+    "Object Classification (from prediction image)",
+    "Pixel Classification",
+    "Structured Learning Tracking Workflow from binary image",
+    "Structured Learning Tracking Workflow from prediction image",
+    "Trainable Domain Adaptation (Local) (beta)",
+    "Trainable Domain Adaptation (Local)",
+]
+
+
+class ProjectBase(BaseModel):
+    workflow_name: Annotated[
+        WorkflowName,
+        BeforeValidator(decode),
+        BeforeValidator(deserialize_arraylike_from_h5),
+    ] = Field(alias="workflowName")
 
 
 class VigraAxisTags(BaseModel):
