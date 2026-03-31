@@ -146,7 +146,7 @@
                </item>
                <item>
                 <widget class="QLabel" name="label">
-                 <property name="maximumSize">
+                 <property name="fixedSize">
                   <size>
                    <width>174</width>
                    <height>250</height>
