@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -136,7 +134,7 @@ def isVersionCompatible(version):
     v1 = convertVersion(version)[0:2]
     v2 = convertVersion(__version__)[0:2]
     # Version 1.0 is compatible in all respects with version 0.6
-    compatible_set = [(0, 6), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]
+    compatible_set = [(0, 6), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5)]
     if v1 in compatible_set and v2 in compatible_set:
         return True
 
