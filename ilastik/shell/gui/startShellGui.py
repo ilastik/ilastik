@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -54,6 +52,10 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     platform_str = platform.platform().lower()
     if "ubuntu" in platform_str or "fedora" in platform_str or "debian" in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
+
+    if platform.system() == "Windows":
+        # On windows ilastik looks ugly without setting this env variable
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)

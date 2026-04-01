@@ -36,13 +36,12 @@ import numpy
 
 # PyQt
 from qtpy import uic
-from qtpy.QtCore import Signal, QObject, Qt, QUrl, QTimer
+from qtpy.QtCore import QRect, Signal, QObject, Qt, QUrl, QTimer
 from qtpy.QtGui import (
     QDesktopServices,
     QKeySequence,
     QIcon,
     QFont,
-    QDesktopServices,
     QPixmap,
 )
 from qtpy.QtWidgets import (
@@ -56,16 +55,13 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QMainWindow,
-    QMenu,
     QMessageBox,
     QProgressBar,
-    QPushButton,
     QSpinBox,
     QTextEdit,
     QToolButton,
     QVBoxLayout,
-    QWidget,
+    qApp,
 )
 
 # lazyflow
@@ -558,10 +554,11 @@ class IlastikShell(QMainWindow):
 
         self.errorMessageFilter = ErrorMessageFilter(self)
 
-        frame_geometry = preferences.get("shell", "startscreenGeometry")
+        frame_geometry: Union[tuple[int, int, int, int], None] = preferences.get("shell", "startscreenGeometry")
+
         if frame_geometry is not None:
-            x, y, w, h = frame_geometry
-            self.move(x, y)
+            valid_geometry = self._valid_screen_geometry(QRect(*frame_geometry))
+            self.move(valid_geometry.x(), valid_geometry.y())
 
             # The frameGeometry() function doesn't actually include the
             #  window frame padding until the window has been shown at least once.
@@ -572,9 +569,29 @@ class IlastikShell(QMainWindow):
             # so instead we have to calculate the target size of the internal geometry.
             frame_padding_width = self.frameGeometry().width() - self.geometry().size().width()
             frame_padding_height = self.frameGeometry().height() - self.geometry().size().height()
-            self.resize(w - frame_padding_width, h - frame_padding_height)
+            self.resize(valid_geometry.width() - frame_padding_width, valid_geometry.height() - frame_padding_height)
 
         self._initShortcuts()
+
+    @staticmethod
+    def _valid_screen_geometry(frame_geometry: QRect) -> QRect:
+        screen_geometry: QRect = qApp.primaryScreen().availableGeometry()
+        w_min = min(frame_geometry.width(), screen_geometry.width())
+        h_min = min(frame_geometry.height(), screen_geometry.height())
+
+        x = frame_geometry.x()
+        left_edge_out_of_screen = x < screen_geometry.x()
+        right_edge_out_of_screen = x + w_min > screen_geometry.x() + screen_geometry.width()
+        if left_edge_out_of_screen or right_edge_out_of_screen:
+            x = screen_geometry.x() + screen_geometry.width() // 2 - w_min // 2
+
+        y = frame_geometry.y()
+        top_edge_out_of_screen = y < screen_geometry.y()
+        bottom_edge_out_of_screen = y + h_min > screen_geometry.y() + screen_geometry.height()
+        if top_edge_out_of_screen or bottom_edge_out_of_screen:
+            y = screen_geometry.y() + screen_geometry.height() // 2 - h_min // 2
+
+        return QRect(x, y, w_min, h_min)
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
