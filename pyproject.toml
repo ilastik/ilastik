@@ -1,11 +1,25 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "ilastik-core"
+description = "ilastik - the interactive learning and segmentation toolkit"
+dynamic = ["version"]
+urls = { Homepage = "https://github.com/ilastik/ilastik" }
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ilastik*", "lazyflow*"]
+
+[tool.setuptools_scm]
+version_file = "ilastik/_version.py"
 
 [tool.black]
 line-length = 120
-target-version = ["py38", "py39", "py310", "py311"]
-
+target-version = ["py310", "py311", "py312"]
 
 [tool.isort]
 line_length = 120
