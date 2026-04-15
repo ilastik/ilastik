@@ -1,6 +1,8 @@
-{% set setup_py_data = load_setup_py_data(setup_file='setup.py', from_recipe_dir=True) %}
+{% set setup_py_data = load_setup_py_data(setup_file='../conda-build-setup.py', from_recipe_dir=True) %}
 {% set version = setup_py_data.version %}
 
+
+{% set PYTHON = PYTHON | default("$PYTHON") %}
 
 package:
   name: ilastik-package-meta-recipe
@@ -19,7 +21,7 @@ outputs:
       script_env:
         - SETUPTOOLS_SCM_PRETEND_VERSION={{version}}
       script:
-        - {{ python }} -m pip install . --no-deps -vv
+        - {{PYTHON}} -m pip install . --no-deps -vv
     requirements:
       host:
         - python >=3.10
