@@ -107,7 +107,9 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
         if self.topLevelOperator.SelectedExportSource.value != OpTrackingBaseDataExport.PluginOnlyName:
             super(TrackingBaseDataExportGui, self)._chooseSettings()
             return
-        opExportModelOp, opSubRegion = get_model_op(self.topLevelOperator)
+        opExportModelOp, exportSubregionMax = get_model_op(
+            self.topLevelOperator, self.batchOutputTableWidget.currentRow()
+        )
         if opExportModelOp is None:
             QMessageBox.information(
                 self,
@@ -151,7 +153,6 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()
-            opSubRegion.cleanUp()
 
             # Update the gui with the new export paths
             for index, slot in enumerate(self.topLevelOperator.ExportPath):
