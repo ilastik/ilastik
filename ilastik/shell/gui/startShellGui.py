@@ -54,8 +54,12 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
     if platform.system() == "Windows":
+        from PyQt5.QtGui import QGuiApplication
+
         # On windows ilastik looks ugly without setting this env variable
+        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
