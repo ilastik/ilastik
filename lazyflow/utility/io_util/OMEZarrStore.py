@@ -490,7 +490,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
             # When we support v0.5, zarr.json should be the first attempt and .zattrs the fallback
             meta = json.loads(store["zarr.json"])
             version = meta["attributes"]["ome"]["version"]
-            raise NotImplementedError(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
+            raise NoOMEZarrMetaFound(f"This OME-Zarr store is version {version}. ilastik does not support this yet.")
         except KeyError:
             pass  # Raise the original error from .zattrs attempt
         raise NoOMEZarrMetaFound(
