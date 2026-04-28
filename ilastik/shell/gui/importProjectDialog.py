@@ -47,11 +47,11 @@ logger = logging.getLogger(__name__)
 class ImportProjectDialog(QDialog):
 
     class Messages(StrEnum):
-        DESTINATION_PLACEHOLDER = "Click the button to the right to select a new project file name to import to."
+        DESTINATION_PLACEHOLDER = "Click Browse button to select new project file."
         IMPORTING_TO = "Importing from workflow type {workflow_name}."
         INVALID_DEST_NAME = "File name must have the `.ilp` suffix."
         INVALID_SRC_ILP = "Not a valid ilastik project (`.ilp`) file."
-        SOURCE_PLACEHOOLDER = "Click the button to the right to select an existing ilastik project to import from."
+        SOURCE_PLACEHOLDER = "Click Browse button select an existing ilastik project to import from."
         SRC_DEST_EQ = "Cannot import into the same project file."
 
     def __init__(self, workflow_list: list[str], base_path: Path, parent=None):
@@ -68,7 +68,7 @@ class ImportProjectDialog(QDialog):
 
         src_layout = QHBoxLayout()
         self.src_edit = QLineEdit()
-        self.src_edit.setPlaceholderText(self.Messages.SOURCE_PLACEHOOLDER)
+        self.src_edit.setPlaceholderText(self.Messages.SOURCE_PLACEHOLDER)
         self.src_edit.setReadOnly(True)
         self.src_button = QPushButton("Browse...")
         src_layout.addWidget(self.src_edit)
@@ -196,5 +196,4 @@ class ImportProjectDialog(QDialog):
         self.ok_button.setEnabled(valid)
 
     def get_values(self) -> tuple[Path, Path, str]:
-        # if self.re
         return Path(self.src_edit.text()), Path(self.dst_edit.text()), self.combo.currentText()
