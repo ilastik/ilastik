@@ -23,5 +23,9 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
 class MulticutSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialSlot(operator.Beta, selfdepends=True), SerialSlot(operator.SolverName, selfdepends=True)]
+        slots = [
+            SerialSlot(operator.Beta, selfdepends=True),
+            SerialSlot(operator.SolverName, selfdepends=True),
+            SerialSlot(operator.ProbabilityThreshold, selfdepends=True),
+        ]
         super(MulticutSerializer, self).__init__(projectFileGroupName, slots=slots)
