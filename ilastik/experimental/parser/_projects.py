@@ -25,13 +25,13 @@ from pydantic import BaseModel, Field
 from . import types
 
 
-class PixelClassificationProject(BaseModel):
+class PixelClassificationProject(types.ProjectBase):
     input_data: types.InputData = Field(alias="Input Data")
     feature_matrix: types.FeatureMatrix = Field(alias="FeatureSelections")
     classifier: types.Classifier = Field(alias="PixelClassification")
 
 
-class AutocontextProject(BaseModel):
+class AutocontextProject(types.ProjectBase):
     input_data: types.InputData = Field(alias="Input Data")
     feature_matrix_stage1: types.FeatureMatrix = Field(alias="FeatureSelections")
     classifier_stage1: types.Classifier = Field(alias="PixelClassification")

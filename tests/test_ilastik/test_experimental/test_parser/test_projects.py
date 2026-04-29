@@ -3,12 +3,30 @@ import numpy as np
 import pytest
 
 from ilastik.experimental.parser import AutocontextProject, PixelClassificationProject
+from ilastik.experimental.parser.types import ProjectBase
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import (
     ParallelVigraRfLazyflowClassifier,
     ParallelVigraRfLazyflowClassifierFactory,
 )
 
 from ..types import ApiTestDataLookup, TestProjects
+
+
+@pytest.mark.parametrize(
+    "proj, expected_workflow_name",
+    [
+        (TestProjects.PIXEL_CLASS_1_CHANNEL_XYC, "Pixel Classification"),
+        (TestProjects.PIXEL_CLASS_3_CHANNEL, "Pixel Classification"),
+        (TestProjects.AUTOCONTEXT_2D, "AutocontextTwoStage"),
+        (TestProjects.AUTOCONTEXT_3D, "AutocontextTwoStage"),
+    ],
+)
+def test_project_workflow_name(test_data_lookup: ApiTestDataLookup, proj, expected_workflow_name):
+    project_path = test_data_lookup.find_project(proj)
+    with h5py.File(project_path, "r") as f:
+        project = ProjectBase.model_validate(f)
+
+    assert project.workflow_name == expected_workflow_name
 
 
 class TestIlastikPixelClassificationParser:

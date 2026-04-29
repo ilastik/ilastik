@@ -29,7 +29,7 @@ import numbers
 import platform
 import threading
 import warnings
-from typing import Optional, Type, Union
+from typing import TYPE_CHECKING, Optional, Type, Union
 
 # SciPy
 import numpy
@@ -45,6 +45,7 @@ from qtpy.QtGui import (
     QPixmap,
 )
 from qtpy.QtWidgets import (
+    QDialog,
     QMainWindow,
     QWidget,
     QMenu,
@@ -99,6 +100,7 @@ from ilastik.shell.gui.awsCredentialsDialog import AwsCredentialsDialog
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.shell.gui.reportIssueDialog import ReportIssueDialog
+from ilastik.shell.gui.importProjectDialog import ImportProjectDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
@@ -113,6 +115,9 @@ try:
     _has_dvid_support = True
 except:
     _has_dvid_support = False
+
+if TYPE_CHECKING:
+    import h5py
 
 logger = logging.getLogger(__name__)
 
@@ -639,12 +644,16 @@ class IlastikShell(QMainWindow):
     def loadWorkflow(self, workflow_class):
         self.onNewProjectActionTriggered(workflow_class)
 
-    def getWorkflow(self, w: Optional[str] = None) -> Type[Workflow]:
-        listOfItems = [
+    def getWorkflowList(self) -> list[str]:
+        list_of_workflows = [
             workflowDisplayName
             for wf_class, __, workflowDisplayName in getAvailableWorkflows()
             if getattr(wf_class, "show_in_startup_menu", True)
         ]
+        return list_of_workflows
+
+    def getWorkflow(self, w: Optional[str] = None) -> Type[Workflow]:
+        listOfItems = self.getWorkflowList()
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
@@ -1615,24 +1624,30 @@ class IlastikShell(QMainWindow):
         else:
             defaultDirectory = os.path.expanduser("~")
 
-        # Select the paths to the ilp to import and the name of the new one we'll create
-        importedFilePath = self.getProjectPathToOpen(defaultDirectory)
-        if importedFilePath is None:  # User cancelled
+        workflow_list = self.getWorkflowList()
+
+        dlg = ImportProjectDialog(
+            parent=self, workflow_list=sorted(workflow_list), base_path=pathlib.Path(defaultDirectory)
+        )
+        status = dlg.exec()
+
+        if status != QDialog.Accepted:
             return
 
-        preferences.set("shell", "recently imported", importedFilePath)
-        defaultFile, ext = os.path.splitext(importedFilePath)
-        defaultFile += "_imported"
-        defaultFile += ext
-        newProjectFilePath = self.getProjectPathToCreate(defaultFile)
-        if newProjectFilePath is None or not self.ensureNoCurrentProject():
-            return
+        src_project, dst_project, workflow_name = dlg.get_values()
 
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+        newProjectFile = ProjectManager.createBlankProjectFile(dst_project)
+
+        workflow_cls = getWorkflowFromName(workflow_name)
+        assert workflow_cls
 
         # workflow_class=None triggers a prompt for the user to choose a workflow type
         self._loadProject(
-            newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath
+            newProjectFile,
+            str(dst_project),
+            workflow_class=workflow_cls,
+            readOnly=False,
+            importFromPath=str(src_project),
         )
 
     def onDownloadProjectFromDvidActionTriggered(self):
@@ -1753,7 +1768,14 @@ class IlastikShell(QMainWindow):
             QApplication.restoreOverrideCursor()
             self.statusBar.clearMessage()
 
-    def _loadProject(self, hdf5File, projectFilePath, workflow_class, readOnly, importFromPath=None):
+    def _loadProject(
+        self,
+        hdf5File: "h5py.File",
+        projectFilePath: str,
+        workflow_class: Union[Type[Workflow], None],
+        readOnly: bool,
+        importFromPath: Optional[str] = None,
+    ):
         """
         Load the data from the given hdf5File (which should already be open).
         Instantiate a ProjectManager and have it either load hdf5File,

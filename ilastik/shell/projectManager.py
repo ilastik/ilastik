@@ -129,7 +129,7 @@ class ProjectManager(object):
     @staticmethod
     def createBlankProjectFile(
         projectFilePath, workflow_class=None, workflow_cmdline_args=None, h5_file_kwargs: Optional[Dict] = None
-    ):
+    ) -> h5py.File:
         """Create a new ilp file at the given path and initialize it with a project version.
 
         Class method. If a file already exists at the location, it
