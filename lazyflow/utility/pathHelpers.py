@@ -43,7 +43,6 @@ class PathComponents(object):
     HDF5_EXTS = [".ilp", ".h5", ".hdf5"]
     N5_EXTS = [".n5"]
     NPZ_EXTS = [".npz"]
-    ZARR_EXTS = [".zarr"]
 
     def __init__(self, totalPath, cwd=None):
         """
@@ -79,7 +78,7 @@ class PathComponents(object):
         totalPath = totalPath.replace("\\", "/")
 
         # For hdf5/n5 paths, split into external, extension, and internal paths
-        for x in self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS + self.ZARR_EXTS:
+        for x in self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x
