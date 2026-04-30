@@ -410,7 +410,11 @@ class OpSubRegion(Operator):
             self.Output.meta.NOTREADY = True
         else:
             self.Output.meta.assignFrom(self.Input.meta)
-            self.Output.meta.shape = tuple(stop - start)
+            new_shape = tuple(stop - start)
+            self.Output.meta.shape = new_shape
+            if "ideal_blockshape" in self.Output.meta and self.Output.meta.ideal_blockshape is not None:
+                clamped_ideal = tuple(map(min, self.Output.meta.ideal_blockshape, new_shape))
+                self.Output.meta.ideal_blockshape = clamped_ideal
 
     def execute(self, slot, subindex, output_roi, result):
         input_roi = numpy.array((output_roi.start, output_roi.stop))
