@@ -8,7 +8,6 @@ ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
 /* Applet bar */
 QToolBox {
   border: 1px inset gray;
-  icon-size: 18px;
 }
 
 QToolBox::tab {
@@ -33,8 +32,8 @@ QToolBox::tab:hover {
 }
 
 /********************************************
-The entries below are now commented out because it is better 
-to defer to the user's system color settings than to hard-code 
+The entries below are now commented out because it is better
+to defer to the user's system color settings than to hard-code
 specific colors.  If you want to change a widget's background color,
 try something like this:
 

@@ -1,7 +1,7 @@
 from typing import List, Tuple, Union
 from qtpy.QtCore import Signal, QObject
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QToolBox, QWidget, QStackedWidget
+from qtpy.QtWidgets import QToolBox, QWidget, QStackedWidget, QApplication
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
@@ -11,6 +11,8 @@ class AppletDrawerToolBox(QToolBox):
         super().__init__(*args, **kwargs)
         self.ICON_CLOSED = QIcon(ilastikIcons.ChevronRight)
         self.ICON_OPEN = QIcon(ilastikIcons.ChevronDown)
+        icon_size = int(QApplication.instance().fontMetrics().ascent())
+        self.setStyleSheet(f"QToolBox {{ icon-size: {icon_size}px; }}")
 
         self._prevActive = None
         self.currentChanged.connect(self._toggleCollapsedMarker)
