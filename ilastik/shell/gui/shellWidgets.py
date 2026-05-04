@@ -23,6 +23,7 @@ from typing import Optional, Union
 from qtpy.QtCore import Qt, QSize
 from qtpy.QtGui import QColor, QMouseEvent, QPaintEvent, QPalette, QResizeEvent
 from qtpy.QtWidgets import (
+    QApplication,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -148,7 +149,10 @@ class MainControls(QSplitter):
         viewerControlStackpolicy.setHorizontalStretch(2)
         viewerControlStackpolicy.setVerticalStretch(2)
         self.viewerControlStack.setSizePolicy(viewerControlStackpolicy)
-        self.viewerControlStack.setMinimumSize(310, 200)
+        em = QApplication.instance().fontMetrics().ascent()
+        width = em * 18
+        height = em * 12
+        self.viewerControlStack.setMinimumSize(width, height)
         self.viewerControlStack.setBaseSize(0, 0)
         self.viewerControlStack.setFrameShape(QFrame.NoFrame)
         self.viewerControlStack.setFrameShadow(QFrame.Plain)
