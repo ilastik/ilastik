@@ -38,11 +38,12 @@ from qtpy.QtWidgets import (
 )
 
 from .datasetDetailedInfoTableModel import DatasetColumn
-from .addFileButton import AddFileButton, FILEPATH
+from .addFileButton import AddFileButton
 
 from pathlib import Path
 from functools import partial
 
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility.gui import silent_qobject
 
 
@@ -53,7 +54,7 @@ class RemoveButtonOverlay(QPushButton):
 
     def __init__(self, parent=None):
         super().__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
+            QIcon(ilastikIcons.RemSel),
             "",
             parent,
             clicked=self.removeButtonClicked,

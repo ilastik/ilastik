@@ -22,10 +22,7 @@ from qtpy.QtCore import Signal, QModelIndex
 from qtpy.QtWidgets import QMenu, QPushButton
 from qtpy.QtGui import QIcon
 
-# this is used to find the location of the icon file
-import os.path
-
-FILEPATH = os.path.split(__file__)[0]
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 # Is DVID available?
 try:
@@ -61,7 +58,7 @@ class AddFileButton(QPushButton):
             corresponding to an existing lane (such as prediction maps)
         """
         super(AddFileButton, self).__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-add.png"),
+            QIcon(ilastikIcons.AddSel),
             "Add..." if new == False else "Add New...",
             parent,
         )
