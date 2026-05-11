@@ -19,16 +19,27 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
-from typing import Annotated, List, Tuple
+import json
+from typing import Annotated, Any, List, Tuple, Union
 
 import annotated_types
+import h5py
 from pydantic import BaseModel, BeforeValidator, StringConstraints
 
+from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
 
-from ilastik.experimental.parser._h5helpers import (
-    deserialize_arraylike_from_h5,
-    deserialize_axistags_from_h5,
-)
+
+def deserialize_str_list_from_h5(str_list: h5py.Dataset) -> List[str]:
+    return [x.decode() for x in str_list]
+
+
+def deserialize_axistags_from_h5(ds: h5py.Dataset) -> dict[str, Union[float, int, str]]:
+    return json.loads(deserialize_string_from_h5(ds))["axes"]
+
+
+def deserialize_arraylike_from_h5(ds: h5py.Dataset) -> Any:
+    return ds[()]
+
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
 LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]

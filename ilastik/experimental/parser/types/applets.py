@@ -32,12 +32,11 @@ from ilastik.applets.base.appletSerializer.legacyClassifiers import (
     deserialize_classifier,
     deserialize_classifier_factory,
 )
-from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
-from ilastik.experimental.parser._h5helpers import (
+from .base import (
+    DatasetInfo,
     deserialize_arraylike_from_h5,
     deserialize_str_list_from_h5,
 )
-from ilastik.experimental.parser.types.base import DatasetInfo
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
