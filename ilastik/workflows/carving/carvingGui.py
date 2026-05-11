@@ -30,7 +30,7 @@ import numpy
 # PyQt
 from qtpy import uic
 from qtpy.QtGui import QColor, QIcon
-from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog
+from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog, QSizePolicy
 
 # lazyflow
 from lazyflow.request import Request
@@ -97,6 +97,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.save.setIcon(QIcon(ilastikIcons.Save))
         self.labelingDrawerUi.namesButton.setIcon(QIcon(ilastikIcons.Open))
         self.labelingDrawerUi.exportAllMeshesButton.setIcon(QIcon(ilastikIcons.Save))
+        self.labelingDrawerUi.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         self.parentApplet = parentApplet
         self.labelingDrawerUi.currentObjectLabel.setText(DEFAULT_OBJECT_NAME)
