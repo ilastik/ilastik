@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from ilastik.experimental.parser import AutocontextProject, PixelClassificationProject
-from ilastik.experimental.parser.types import ProjectBase
+from ilastik.experimental.parser.types.applets import ProjectBase
 from lazyflow.classifiers.parallelVigraRfLazyflowClassifier import (
     ParallelVigraRfLazyflowClassifier,
     ParallelVigraRfLazyflowClassifierFactory,

@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,21 +19,30 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
+from typing import Annotated, List, Tuple
 
-from pydantic import Field
-
-from . import types
-
-
-class PixelClassificationProject(types.applets.ProjectBase):
-    input_data: types.applets.InputData = Field(alias="Input Data")
-    feature_matrix: types.applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier: types.applets.Classifier = Field(alias="PixelClassification")
+import annotated_types
+from pydantic import BaseModel, BeforeValidator, StringConstraints
 
 
-class AutocontextProject(types.applets.ProjectBase):
-    input_data: types.applets.InputData = Field(alias="Input Data")
-    feature_matrix_stage1: types.applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier_stage1: types.applets.Classifier = Field(alias="PixelClassification")
-    feature_matrix_stage2: types.applets.FeatureMatrix = Field(alias="FeatureSelections01")
-    classifier_stage2: types.applets.Classifier = Field(alias="PixelClassification01")
+from ilastik.experimental.parser._h5helpers import (
+    deserialize_arraylike_from_h5,
+    deserialize_axistags_from_h5,
+)
+
+NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
+LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
+
+
+class VigraAxisTags(BaseModel):
+    key: str
+    typeFlags: int
+    resolution: int
+    description: str
+
+
+class DatasetInfo(BaseModel):
+    axistags: Annotated[List[VigraAxisTags], BeforeValidator(deserialize_axistags_from_h5)]
+    shape: Annotated[
+        NDShape, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
+    ]
