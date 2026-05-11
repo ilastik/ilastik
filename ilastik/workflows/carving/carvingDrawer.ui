@@ -205,10 +205,6 @@
        <property name="text">
         <string>Segment</string>
        </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../shell/gui/icons/16x16/actions/media-playback-start.png</normaloff>../../shell/gui/icons/16x16/actions/media-playback-start.png</iconset>
-       </property>
        <property name="toolButtonStyle">
         <enum>Qt::ToolButtonTextBesideIcon</enum>
        </property>
@@ -224,10 +220,6 @@
        </property>
        <property name="text">
         <string>Clear</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../shell/gui/icons/16x16/actions/edit-clear.png</normaloff>../../shell/gui/icons/16x16/actions/edit-clear.png</iconset>
        </property>
        <property name="toolButtonStyle">
         <enum>Qt::ToolButtonTextBesideIcon</enum>
@@ -247,71 +239,11 @@
      <property name="text">
       <string>Save current object</string>
      </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>../../shell/gui/icons/16x16/actions/document-save.png</normaloff>../../shell/gui/icons/16x16/actions/document-save.png</iconset>
-     </property>
      <property name="toolButtonStyle">
       <enum>Qt::ToolButtonTextBesideIcon</enum>
      </property>
     </widget>
    </item>
-<!--    <item>
-    <widget class="QLabel" name="label_9">
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Uncertainty:</string>
-     </property>
-    </widget>
-   </item> -->
-<!--    <item>
-    <widget class="QComboBox" name="uncertaintyCombo">
-     <item>
-      <property name="text">
-       <string>None</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Local Margin</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Exchange Count</string>
-      </property>
-     </item>
-    </widget>
-   </item> -->
-<!--    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QPushButton" name="pushButtonUncertaintyFG">
-       <property name="toolTip">
-        <string>Goto position of maximal uncertainty (Foreground)</string>
-       </property>
-       <property name="text">
-        <string>Max Uncer. FG</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButtonUncertaintyBG">
-       <property name="toolTip">
-        <string>Goto position of maximal uncertainty (Background)</string>
-       </property>
-       <property name="text">
-        <string>Max Uncer. BG</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item> -->
    <item>
     <widget class="QLabel" name="label_7">
      <property name="font">
@@ -404,20 +336,12 @@
        <property name="text">
         <string>Browse objects</string>
        </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../shell/gui/icons/16x16/actions/document-open.png</normaloff>../../shell/gui/icons/16x16/actions/document-open.png</iconset>
-       </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="exportAllMeshesButton">
        <property name="text">
         <string>Export All Meshes</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../shell/gui/icons/16x16/actions/document-save-as.png</normaloff>../../shell/gui/icons/16x16/actions/document-save-as.png</iconset>
        </property>
       </widget>
      </item>

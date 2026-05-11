@@ -29,7 +29,7 @@ import numpy
 
 # PyQt
 from qtpy import uic
-from qtpy.QtGui import QColor
+from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog
 
 # lazyflow
@@ -44,8 +44,9 @@ from volumina.view3d.meshgenerator import mesh_to_obj, labeling_to_mesh
 from volumina.view3d.volumeRendering import RenderingManager
 
 # ilastik
-from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind
 
 
 import logging
@@ -91,6 +92,11 @@ class CarvingGui(LabelingGui):
         super(CarvingGui, self).__init__(
             parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath, is_3d_widget_visible=is_3d
         )
+        self.labelingDrawerUi.segment.setIcon(QIcon(ilastikIcons.Play))
+        self.labelingDrawerUi.clear.setIcon(QIcon(ilastikIcons.Clear))
+        self.labelingDrawerUi.save.setIcon(QIcon(ilastikIcons.Save))
+        self.labelingDrawerUi.namesButton.setIcon(QIcon(ilastikIcons.Open))
+        self.labelingDrawerUi.exportAllMeshesButton.setIcon(QIcon(ilastikIcons.Save))
 
         self.parentApplet = parentApplet
         self.labelingDrawerUi.currentObjectLabel.setText(DEFAULT_OBJECT_NAME)
