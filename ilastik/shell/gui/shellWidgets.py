@@ -43,6 +43,16 @@ from qtpy.QtWidgets import (
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 
 
+_CENTRAL_WIDGET_MIN_WIDTH = 30
+_CENTRAL_WIDGET_MIN_HEIGHT = 30
+_MAIN_CONTROLS_MIN_WIDTH = 20
+_MAIN_CONTROLS_MIN_HEIGHT = 10
+
+
+def em():
+    return QApplication.instance().fontMetrics().ascent()
+
+
 class VerticalButton(QPushButton):
 
     def sizeHint(self) -> QSize:
@@ -106,8 +116,10 @@ class CentralWidgetStack(QStackedWidget):
         policy.setVerticalStretch(2)
         self.setSizePolicy(policy)
 
-        self.setMinimumSize(500, 100)
-        self.setBaseSize(500, 100)
+        width = em() * _CENTRAL_WIDGET_MIN_WIDTH
+        height = em() * _CENTRAL_WIDGET_MIN_HEIGHT
+        self.setMinimumSize(width, height)
+        self.setBaseSize(width, height)
 
         self.setFrameShape(QFrame.NoFrame)
         self.setFrameShadow(QFrame.Plain)
@@ -149,9 +161,8 @@ class MainControls(QSplitter):
         viewerControlStackpolicy.setHorizontalStretch(2)
         viewerControlStackpolicy.setVerticalStretch(2)
         self.viewerControlStack.setSizePolicy(viewerControlStackpolicy)
-        em = QApplication.instance().fontMetrics().ascent()
-        width = em * 18
-        height = em * 12
+        width = em() * _MAIN_CONTROLS_MIN_WIDTH
+        height = em() * _MAIN_CONTROLS_MIN_HEIGHT
         self.viewerControlStack.setMinimumSize(width, height)
         self.viewerControlStack.setBaseSize(0, 0)
         self.viewerControlStack.setFrameShape(QFrame.NoFrame)
