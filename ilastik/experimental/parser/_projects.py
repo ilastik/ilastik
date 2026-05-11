@@ -27,13 +27,13 @@ from . import types
 
 class PixelClassificationProject(types.applets.ProjectBase):
     input_data: types.applets.InputData = Field(alias="Input Data")
-    feature_matrix: types.applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier: types.applets.Classifier = Field(alias="PixelClassification")
+    feature_matrix: types.applets.FeatureSelection = Field(alias="FeatureSelections")
+    classifier: types.applets.PixelClassification = Field(alias="PixelClassification")
 
 
 class AutocontextProject(types.applets.ProjectBase):
     input_data: types.applets.InputData = Field(alias="Input Data")
-    feature_matrix_stage1: types.applets.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier_stage1: types.applets.Classifier = Field(alias="PixelClassification")
-    feature_matrix_stage2: types.applets.FeatureMatrix = Field(alias="FeatureSelections01")
-    classifier_stage2: types.applets.Classifier = Field(alias="PixelClassification01")
+    feature_matrix_stage1: types.applets.FeatureSelection = Field(alias="FeatureSelections")
+    classifier_stage1: types.applets.PixelClassification = Field(alias="PixelClassification")
+    feature_matrix_stage2: types.applets.FeatureSelection = Field(alias="FeatureSelections01")
+    classifier_stage2: types.applets.PixelClassification = Field(alias="PixelClassification01")
