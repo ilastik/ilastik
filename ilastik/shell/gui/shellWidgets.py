@@ -123,7 +123,7 @@ class CentralWidgetStack(QStackedWidget):
 class MainControls(QSplitter):
     """The widget home to the applet drawer and viewer control stack"""
 
-    _MAIN_CONTROLS_MIN_WIDTH = 17  # Enforced for the whole splitter by the viewer controls
+    _MAIN_CONTROLS_MIN_WIDTH = 18  # Enforced for the whole splitter by the viewer controls
     _VIEWER_CONTROLS_MIN_HEIGHT = 10
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
