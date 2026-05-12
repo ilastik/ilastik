@@ -72,3 +72,9 @@ dependencies:
   - pre-commit
   - pytest >4
   - pytest-qt
+
+variables:
+  # Slightly different behavior for developers:
+  # volumina.is_in_development_env() checks this flag and returns True if set
+  # used in volumina.tiling.TileProvider._fetch_layer_tile
+  ILASTIK_DEVELOPMENT_ENV: "1"
