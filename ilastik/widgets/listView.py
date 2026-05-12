@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,20 +18,17 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
 from qtpy.QtWidgets import QTableView, QAbstractItemView, QHeaderView, QStackedWidget, QLabel, QSizePolicy
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QSize
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-# ===============================================================================
-# Common base class that can be used by the labelListView and the boxListView
-# ===============================================================================
-
 
 class ListView(QStackedWidget):
+    """Common base class for LabelListView and BoxListView"""
+
     PAGE_EMPTY = 0
     PAGE_LISTVIEW = 1
 
@@ -137,16 +134,26 @@ class ListView(QStackedWidget):
         vHeader = t.verticalHeader()
         hHeader = t.horizontalHeader()
         doubleFrame = 2 * t.frameWidth()
-        w = hHeader.length() + vHeader.width() + doubleFrame
+        contentW = 0
+        if t.model():
+            for column in range(t.model().columnCount()):
+                if t.isColumnHidden(column):
+                    continue
+                contentW += max(
+                    t.sizeHintForColumn(column),
+                    hHeader.sectionSizeHint(column),
+                    hHeader.minimumSectionSize(),
+                )
+        w = vHeader.width() + contentW + doubleFrame
 
-        contentH = 0
-        if self._table.model():
-            for i in range(self._table.model().rowCount()):
-                contentH += self._table.rowHeight(i)
-        contentH = max(90, contentH)
-
-        h = hHeader.height() + contentH + doubleFrame
-        from qtpy.QtCore import QSize
+        if self.currentIndex() == self.PAGE_EMPTY:
+            h = self.emptyMessage.minimumSizeHint().height()
+        else:
+            contentH = 0
+            if t.model():
+                for i in range(t.model().rowCount()):
+                    contentH += t.rowHeight(i)
+            h = hHeader.height() + contentH + doubleFrame
 
         return QSize(w, h)
 
