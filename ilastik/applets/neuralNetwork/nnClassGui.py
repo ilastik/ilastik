@@ -616,7 +616,7 @@ class NNClassGui(LabelingGui):
         # validationlayer = AlphaModulatedLayer()
 
         for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
-            logger.info(f"prediction_slot: {predictionSlot}")
+            logger.debug(f"prediction_slot: {predictionSlot}")
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 layers.append(self._createPredLayer(predictionSlot, ref_label))
