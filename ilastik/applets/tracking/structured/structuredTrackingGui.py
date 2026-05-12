@@ -1,8 +1,9 @@
 from __future__ import division
 from builtins import range
 from past.utils import old_div
-from qtpy import uic, QtWidgets
+from qtpy import uic
 from qtpy.QtGui import QColor
+from qtpy.QtWidgets import QAbstractSpinBox, QLineEdit, QMessageBox, QSizePolicy
 
 import os
 import logging
@@ -84,6 +85,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir + "/drawer.ui")
+
+        # SpinBoxes set min-size by their max value, which is huge because one box has max value 2147483647
+        for input_widget in self._drawer.findChildren(QAbstractSpinBox) + self._drawer.findChildren(QLineEdit):
+            input_widget.setSizePolicy(QSizePolicy.Ignored, input_widget.sizePolicy().verticalPolicy())
 
         parameters = self.topLevelOperatorView.Parameters.value
         if "maxDist" in list(parameters.keys()):
@@ -684,4 +689,4 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     @threadRouted
     def postInformationMessage(self, prompt):
-        QtWidgets.QMessageBox.information(self, "Info:", prompt, QtWidgets.QMessageBox.Ok)
+        QMessageBox.information(self, "Info:", prompt, QMessageBox.Ok)
