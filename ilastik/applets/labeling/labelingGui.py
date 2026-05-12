@@ -45,7 +45,7 @@ from lazyflow.slot import InputSlot, OutputSlot
 
 # ilastik
 from ilastik.utility import bind, log_exception
-from ilastik.utility.gui import ThunkEventHandler, is_qt_dark_mode, threadRouted
+from ilastik.utility.gui import ThunkEventHandler, is_qt_dark_mode, threadRouted, line_height
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui, LayerPriority
 
 from ilastik.applets.labeling.labelingImport import import_labeling_layer
@@ -221,7 +221,7 @@ class LabelingGui(LayerViewerGui):
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
-        em = self._labelControlUi.fontMetrics().height()
+        em = line_height()
         pad_small = round(0.1 * em)
         pad_large = round(0.35 * em)
         height = round(1.4 * em)

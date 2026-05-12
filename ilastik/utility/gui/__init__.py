@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,7 +19,6 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from qtpy.QtWidgets import QApplication
-
 
 from .roi import roi2rect
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
@@ -39,3 +38,8 @@ def is_qt_dark_mode() -> bool:
     Returns True if in dark mode, False if light mode
     """
     return QApplication.palette().windowText().color().value() > QApplication.palette().window().color().value()
+
+
+def line_height() -> int:
+    """Relative base unit for responsive UI sizing. Similar to CSS `em`"""
+    return QApplication.fontMetrics().height()
