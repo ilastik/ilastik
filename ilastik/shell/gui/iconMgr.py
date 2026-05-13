@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2023, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -82,6 +82,8 @@ class ilastikIcons(object):
     New = iconPath + "actions/document-new.png"
     Open = iconPath + "actions/document-open.png"
     OpenFolder = iconPath + "status/folder-open.png"
+    GoUp = iconPath + "actions/go-up.png"
+    GoDown = iconPath + "actions/go-down.png"
     GoNext = iconPath + "actions/go-next.png"
     Save = iconPath + "actions/document-save.png"
     SaveAs = iconPath + "actions/document-save-as.png"

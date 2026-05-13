@@ -38,12 +38,13 @@ from qtpy.QtWidgets import (
 )
 
 from .datasetDetailedInfoTableModel import DatasetColumn
-from .addFileButton import AddFileButton, FILEPATH
+from .addFileButton import AddFileButton
 
 from pathlib import Path
 from functools import partial
 
-from ilastik.utility.gui import silent_qobject
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility.gui import silent_qobject, line_height
 
 
 class RemoveButtonOverlay(QPushButton):
@@ -53,7 +54,7 @@ class RemoveButtonOverlay(QPushButton):
 
     def __init__(self, parent=None):
         super().__init__(
-            QIcon(FILEPATH + "/../../shell/gui/icons/16x16/actions/list-remove.png"),
+            QIcon(ilastikIcons.RemSel),
             "",
             parent,
             clicked=self.removeButtonClicked,
@@ -266,6 +267,9 @@ class ScaleComboBoxDelegate(QStyledItemDelegate):
 
 
 class DatasetDetailedInfoTableView(QTableView):
+    _SHAPE_COL_WIDTH = 11
+    _SCALE_COL_WIDTH = 14
+
     dataLaneSelected = Signal(object)  # Signature: (laneIndex)
     scaleSelected = Signal(int, str)  # Signature: (lane_index, scale_key)
 
@@ -396,8 +400,8 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
-        self.setColumnWidth(DatasetColumn.TaggedShape, 215)
-        self.setColumnWidth(DatasetColumn.Scale, 250)
+        self.setColumnWidth(DatasetColumn.TaggedShape, line_height() * self._SHAPE_COL_WIDTH)
+        self.setColumnWidth(DatasetColumn.Scale, line_height() * self._SCALE_COL_WIDTH)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Nickname, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setSectionResizeMode(DatasetColumn.InternalID, QHeaderView.Interactive)

@@ -183,12 +183,14 @@ class ModelStateControl(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.modelSourceEdit = ModelSourceEdit(self)
         self.statusLabel = QLabel(self)
         self.modelControlButton = QToolButton(self)
 
         bottom_layout = QHBoxLayout()
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
         bottom_layout.addWidget(self.statusLabel)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.modelControlButton)

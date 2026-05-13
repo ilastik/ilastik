@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2025, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -39,6 +39,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ilastik.utility.gui import line_height
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 
 
@@ -97,6 +98,9 @@ class CentralWidgetStack(QStackedWidget):
     usually volumina, sometimes also additional elements, e.g. in DataSelection
     """
 
+    _CENTRAL_WIDGET_MIN_WIDTH = 25
+    _CENTRAL_WIDGET_MIN_HEIGHT = 25
+
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
 
@@ -105,8 +109,11 @@ class CentralWidgetStack(QStackedWidget):
         policy.setVerticalStretch(2)
         self.setSizePolicy(policy)
 
-        self.setMinimumSize(500, 100)
-        self.setBaseSize(500, 100)
+        em = line_height()
+        width = em * self._CENTRAL_WIDGET_MIN_WIDTH
+        height = em * self._CENTRAL_WIDGET_MIN_HEIGHT
+        self.setMinimumSize(width, height)
+        self.setBaseSize(width, height)
 
         self.setFrameShape(QFrame.NoFrame)
         self.setFrameShadow(QFrame.Plain)
@@ -115,6 +122,9 @@ class CentralWidgetStack(QStackedWidget):
 
 class MainControls(QSplitter):
     """The widget home to the applet drawer and viewer control stack"""
+
+    _MAIN_CONTROLS_MIN_WIDTH = 18  # Enforced for the whole splitter by the viewer controls
+    _VIEWER_CONTROLS_MIN_HEIGHT = 10
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(Qt.Vertical, parent)
@@ -148,7 +158,10 @@ class MainControls(QSplitter):
         viewerControlStackpolicy.setHorizontalStretch(2)
         viewerControlStackpolicy.setVerticalStretch(2)
         self.viewerControlStack.setSizePolicy(viewerControlStackpolicy)
-        self.viewerControlStack.setMinimumSize(310, 200)
+        em = line_height()
+        width = em * self._MAIN_CONTROLS_MIN_WIDTH
+        height = em * self._VIEWER_CONTROLS_MIN_HEIGHT
+        self.viewerControlStack.setMinimumSize(width, height)
         self.viewerControlStack.setBaseSize(0, 0)
         self.viewerControlStack.setFrameShape(QFrame.NoFrame)
         self.viewerControlStack.setFrameShadow(QFrame.Plain)

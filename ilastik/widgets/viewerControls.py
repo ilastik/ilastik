@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -23,7 +23,10 @@ import os
 
 # Third-party
 from qtpy import uic
+from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QWidget
+
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from volumina.widgets.exportHelper import prompt_export_settings_and_export_layer
 
@@ -31,8 +34,15 @@ from volumina.widgets.exportHelper import prompt_export_settings_and_export_laye
 class ViewerControls(QWidget):
     def __init__(self, parent=None, model=None):
         QWidget.__init__(self, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
         localDir = os.path.split(__file__)[0]
         uic.loadUi(os.path.join(localDir, "viewerControls.ui"), self)
+
+        self.UpButton.setIcon(QIcon(ilastikIcons.GoUp))
+        self.DownButton.setIcon(QIcon(ilastikIcons.GoDown))
+        self.SaveButton.setIcon(QIcon(ilastikIcons.Save))
 
     def setupConnections(self, model):
         # The editor's layerstack is in charge of which layer movement buttons are enabled
