@@ -28,6 +28,7 @@ from __future__ import annotations
 from functools import partial
 import pathlib
 import tempfile
+import warnings
 from typing_extensions import TypeGuard, assert_never
 
 import numpy as np
@@ -350,4 +351,6 @@ class InputValidator:
                     )
             else:
                 if target_axis_size < min_size:
-                    raise ValueError(f"Incompatible axis {axis}: {target_axis_size} < {min_size}")
+                    warnings.warn(
+                        f"Image shape for spatial axis with expected {axis} too small ({target_axis_size}). Image will be padded."
+                    )
