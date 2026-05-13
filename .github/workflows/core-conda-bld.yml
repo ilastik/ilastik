@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           auto-update-conda: true
           auto-activate-base: true
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         if: matrix.os != 'windows-latest'
         with:
           auto-update-conda: true
@@ -106,7 +106,7 @@ jobs:
           miniforge-version: latest
           conda-solver: libmamba
           conda-remove-defaults: "true"
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         # we need to skip cleanup on windows currently, because it takes
         # hours and stalls CI that way (run-post: false)
         # ref: https://github.com/conda-incubator/setup-miniconda/issues/380
