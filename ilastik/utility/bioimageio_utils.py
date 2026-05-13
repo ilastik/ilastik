@@ -352,5 +352,5 @@ class InputValidator:
             else:
                 if target_axis_size < min_size:
                     warnings.warn(
-                        f"Image shape for spacial axis with expected {axis} too small ({target_axis_size}). Image will be padded."
+                        f"Image shape for spatial axis with expected {axis} too small ({target_axis_size}). Image will be padded."
                     )
