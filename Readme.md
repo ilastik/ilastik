@@ -15,7 +15,7 @@ Leverage machine learning algorithms to easily segment, classify, track and coun
 Most operations are interactive, even on large datasets: you just draw the labels and immediately see the result.
 **No machine learning expertise required.**
 
-![Screenshot][screenshot]
+https://github.com/user-attachments/assets/a5736917-0fd5-4f5d-9fdd-502f786de6ec
 
 See [ilastik.org](https://ilastik.org) for more info and [downloads][download-page].
 
@@ -92,7 +92,6 @@ For more complex changes, see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 [black-img]: https://img.shields.io/badge/code%20style-black-black
 [black-url]: https://github.com/psf/black
 [ilastik-logo]: https://www.ilastik.org/assets/ilastik-logo.png
-[screenshot]: https://www.ilastik.org/assets/img/carousel/crop_training1.jpg
 [download-page]: https://www.ilastik.org/download.html
 [how-to-install]: https://www.ilastik.org/documentation/basics/installation.html
 [documentation]: https://www.ilastik.org/documentation/index.html
