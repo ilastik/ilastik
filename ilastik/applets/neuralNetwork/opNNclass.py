@@ -219,6 +219,16 @@ class OpNNClassification(Operator):
         self.ModelBinary.setValue(model_content)
         return self.opModel.TiktorchModel.ready()
 
+    @property
+    def nn_devices(self) -> str:
+        """Returns the nn device from tiktorch lease"""
+        server_config = self.ServerConfig.value
+        if not server_config or not getattr(server_config, "devices"):
+            return "n/a check logs."
+
+        devices = ", ".join([dev.name for dev in server_config.devices])
+        return devices
+
     def update_config(self, partial_config: dict):
         self.ClassifierFactory.meta.hparams = partial_config
 

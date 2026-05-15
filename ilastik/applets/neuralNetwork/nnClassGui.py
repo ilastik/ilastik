@@ -373,36 +373,11 @@ class NNClassGui(LabelingGui):
         """
         menus = super(NNClassGui, self).menus()
 
-        advanced_menu = QMenu("TikTorch", parent=self)
+        advanced_menu = QMenu("NN Prediction", parent=self)
 
-        def settingParameter():
-            """
-            changing BatchSize
-            """
-            dlg = ParameterDlg(parent=self)
-            dlg.exec_()
-
-            self.topLevelOperatorView.update_config(dlg.hparams)
-
-        set_parameter = advanced_menu.addAction("Set hyperparameters")
-        set_parameter.triggered.connect(settingParameter)
-
-        def object_wizard():
-            wizard = MagicWizard()
-            wizard.show()
-            wizard.exec_()
-
-        advanced_menu.addAction("Create TikTorch configuration").triggered.connect(object_wizard)
-
-        def validationMenu():
-            """
-            set up the validation Menu
-            """
-            dlg = ValidationDlg(parent=self)
-            dlg.exec_()
-
-        advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
-
+        device = self.topLevelOperatorView.nn_devices
+        device_entry = advanced_menu.addAction(f"Device: {device}")
+        device_entry.setEnabled(False)
         menus += [advanced_menu]
 
         return menus
