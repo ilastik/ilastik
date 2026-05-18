@@ -24,6 +24,8 @@ import traceback
 from collections import OrderedDict
 from functools import partial
 
+from bioimageio.spec import settings as bioimageio_settings
+from bioimageio.spec.utils import empty_cache as empty_bioimageio_cache
 import numpy
 import yaml
 from qtpy import uic
@@ -31,12 +33,13 @@ from qtpy.QtCore import (
     QModelIndex,
     QPersistentModelIndex,
     QStringListModel,
+    QUrl,
     Qt,
     QTimer,
     Signal,
     Slot,
 )
-from qtpy.QtGui import QColor, QIcon
+from qtpy.QtGui import QColor, QDesktopServices, QIcon
 from qtpy.QtWidgets import (
     QAction,
     QColorDialog,
@@ -378,6 +381,38 @@ class NNClassGui(LabelingGui):
         device = self.topLevelOperatorView.nn_devices
         device_entry = advanced_menu.addAction(f"Device: {device}")
         device_entry.setEnabled(False)
+
+        model_cache_dir = bioimageio_settings.cache_path
+
+        def _open():
+            if not model_cache_dir.exists():
+                QMessageBox.information(
+                    self,
+                    "Model Cache not found",
+                    f"Model cache directory at {model_cache_dir} not found. Likely no models have been downloaded yet.",
+                )
+                return
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(model_cache_dir)))
+
+        def _delete():
+            if not model_cache_dir.exists():
+                QMessageBox.information(
+                    self,
+                    "Model Cache not found",
+                    f"Model cache directory at {model_cache_dir} not found. Likely no models have been downloaded yet.",
+                )
+                return
+            empty_bioimageio_cache()
+            logger.info(f"Deleted bioimageio model cache: {model_cache_dir}")
+            QMessageBox.information(
+                self,
+                "Deleted bioimageio model cache",
+                f"Model cache directory at {model_cache_dir} was deleted. Models will be re-downloaded once requested.",
+            )
+
+        advanced_menu.addAction("Show model cache").triggered.connect(_open)
+        advanced_menu.addAction("Delete model cache").triggered.connect(_delete)
+
         menus += [advanced_menu]
 
         return menus
