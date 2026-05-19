@@ -1,10 +1,12 @@
 from builtins import range
 import os.path
+import textwrap
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 import vigra
 
 from functools import partial
+from ilastik.plugins.types import PluginInfo
 from lazyflow.request import Request, RequestPool
 
 from skimage import measure
@@ -14,6 +16,20 @@ CONV_WINDOW_SIZE = 20
 
 class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
     """Export contour with head location"""
+
+    plugin_info = PluginInfo(
+        name="Contours-With-Head",
+        author="Jaime I. Cervantes",
+        version="0.1",
+        website="ilastik.org",
+        description=textwrap.dedent("""
+            Plugin to export the ilastik tracking results as contours with the head location (head index).
+            The .contours file contains a line for each object on the video.
+            Each value is separated by a space.
+            The first value is the time (frame number), the second value is the ID, the third value is the head index (in the contour array),
+            the fourth value is the length of the contour array, and the rest of the values are a list of xy pairs from the contour array.
+            """),
+    )
 
     exportsToFile = True
 

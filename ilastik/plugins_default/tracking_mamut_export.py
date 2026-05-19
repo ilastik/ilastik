@@ -1,8 +1,11 @@
 import os.path
+import textwrap
 
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+
+from ilastik.plugins.types import PluginInfo
 
 
 def convertKeyName(key):
@@ -13,7 +16,7 @@ def convertKeyName(key):
 
 
 def getShortname(string):
-    """ convert name to shortname"""
+    """convert name to shortname"""
     shortname = string[0:2]
     for i, l in enumerate(string):
         try:
@@ -34,10 +37,30 @@ def getShortname(string):
 class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
     """MaMuT export"""
 
+    plugin_info = PluginInfo(
+        name="Fiji-MaMuT",
+        author="Carsten Haubold",
+        version="0.1",
+        website="ilastik.org",
+        description=textwrap.dedent("""
+            Plugin to export the ilastik tracking results to Fiji's MaMuT
+            <br><br>
+            <b>Usage:</b> Select the folder where the MaMuT XML file will be saved and provide the path to the
+            BigDataViewer XML file (if you don't have one already export your dataset in Fiji first with
+            <i>Plugins->BigDataViewer->Export Current Image as XML/HDF5</i>):
+            <ul>
+                <li> <b>MaMut Export</b> to be opened with FiJi Mamut Plugin in order to visualise the tracking results.
+                    Has the <i> _mamut.xml </i> extension</li>
+            </ul>
+            <br><br>
+            To open the saved result in Fiji, click <i>Plugins->MaMuT->Open MaMuT annotation</i>
+            and select the exported file with the <i> _mamut.xml </i> suffix.
+            """),
+    )
     exportsToFile = True
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return (
             os.path.exists(filename + "_mamut.xml")
             or os.path.exists(filename + "_bdv.xml")

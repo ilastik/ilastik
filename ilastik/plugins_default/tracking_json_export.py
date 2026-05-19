@@ -1,8 +1,11 @@
 import os.path
+import textwrap
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 
 import logging
+
+from ilastik.plugins.types import PluginInfo
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +18,33 @@ else:
     class TrackingJSONExportFormatPlugin(TrackingExportFormatPlugin):
         """JSON export"""
 
+        plugin_info = PluginInfo(
+            name="JSON",
+            author="Carsten Haubold",
+            version="0.1",
+            website="ilastik.org",
+            description=textwrap.dedent(
+                """
+                JSON export for use of some tracking analysis tools developed by the ilastik tracking guys.
+                <br><br>
+                <b>Usage:</b> Select the folder in which two files will be exported:
+                <ul>
+                    <li> The tracking <b>hypotheses graph</b> will have the suffix and extension <i> _graph.json </i>.</li>
+                    <li> The tracking <b>result</b> with suffix and extension <i> _result.json </i>. </li>
+                </ul>
+                <br><br>
+                Both contain <i>segmentationHypotheses</i> (or <i>detections</i>), <i>linkingHypotheses</i>, and possibly <i>divisions</i>.
+                Each detection is assigned a globally unique <i>id</i>, and in the graph there is a <i>traxelToUniqueId</i>
+                mapping from timestep and object ID inside ilastik to those unique ids.
+                The graph also contains the costs of different configurations of every detection, division, and link.
+                The result assigns a state to each of them.
+                """
+            ),
+        )
         exportsToFile = True
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename + "_graph.json") or os.path.exists(filename + "_result.json")
 
         def export(self, filename, hypothesesGraph, pluginExportContext):
