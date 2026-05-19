@@ -8,6 +8,14 @@ description = "ilastik - the interactive learning and segmentation toolkit"
 dynamic = ["version"]
 urls = { Homepage = "https://github.com/ilastik/ilastik" }
 
+# other modules can specify [project.entrypoints."ilastik.objectfeature_plugins"] to get registered
+# as for example the spherical texture feature plugin does
+[project.entry-points."ilastik.objectfeature_plugins.default"]
+test_objfeats = "ilastik.plugins_default.test_objfeats:TestFeatures"
+vigra_objfeats = "ilastik.plugins_default.vigra_objfeats:VigraObjFeats"
+vigra_objfeats_convex_hull = "ilastik.plugins_default.vigra_objfeats_convex_hull:VigraConvexHullObjFeats"
+vigra_objfeats_convex_hull3D = "ilastik.plugins_default.vigra_objfeats_convex_hull3D:VigraConvexHullObjFeats3D"
+vigra_objfeats_skeleton = "ilastik.plugins_default.vigra_objfeats_skeleton:VigraSkeletonObjFeats"
 [tool.setuptools]
 include-package-data = true
 
