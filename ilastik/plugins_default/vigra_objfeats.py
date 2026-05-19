@@ -18,20 +18,20 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+from typing import Any
 from ilastik.plugins import ObjectFeaturesPlugin
-import ilastik.applets.objectExtraction.opObjectExtraction
 
-# from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
 import numpy as np
-from lazyflow.request import Request, RequestPool
+
+from ilastik.plugins.types import FeatureDescription, FeatureDict, FloatArray, PartialFeatureDict, PluginInfo
 
 
-def cleanup_key(k):
+def cleanup_key(k: str) -> str:
     return k.replace(" ", "")
 
 
-def cleanup_value(val, nObjects, isGlobal):
+def cleanup_value(val, nObjects: int, isGlobal: bool):
     """ensure that the value is a numpy array with the correct shape."""
     val = np.asarray(val)
 
@@ -53,7 +53,7 @@ def cleanup_value(val, nObjects, isGlobal):
     return val
 
 
-def cleanup(d, nObjects, features):
+def cleanup(d: dict[str, Any], nObjects: int, features: dict[str, Any]):
     result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
@@ -61,6 +61,9 @@ def cleanup(d, nObjects, features):
 
 class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
+
+    plugin_info = PluginInfo(name="Standard Object Features", author="Kemal Eren", version="0.1", description="todo")
+
     local_features = set(
         ["Mean", "Variance", "Skewness", "Kurtosis", "Histogram", "Covariance", "Minimum", "Maximum", "Sum"]
     )
@@ -69,20 +72,19 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
     ndim = None
 
-    def availableFeatures(self, image, labels):
+    def availableFeatures(self, image: vigra.VigraArray, labels: vigra.VigraArray) -> dict[str, dict[str, str]]:
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(" ", "") for f in names)
         local = set(names) & self.local_features
         tooltips = {}
         names.extend([x + self.local_suffix for x in local])
-        result = dict((n, {}) for n in names)
+        result: dict[str, dict[str, str]] = dict((n, {}) for n in names)
         result = self.fill_properties(result)
 
         return result
 
-    def fill_properties(self, features):
+    def fill_properties(self, features: PartialFeatureDict) -> FeatureDict:
         # fills properties into the dictionary of features
-
         for feature_name in features.keys():
             features[feature_name]["displaytext"] = feature_name
             features[feature_name]["detailtext"] = feature_name + ", stay tuned for more details"
@@ -234,9 +236,9 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 features[feature_name]["margin"] = 0
                 features[feature_name]["group"] = "Intensity Distribution"
 
-        return features
+        return {k: FeatureDescription(**v) for k, v in features.items()}
 
-    def _do_4d(self, image, labels, features, axes):
+    def _do_4d(self, image: vigra.VigraArray, labels: vigra.VigraArray, features: PartialFeatureDict, axes: str):
         if self.ndim == 2:
             result = vigra.analysis.extractRegionFeatures(
                 image.squeeze().astype(np.float32), labels.squeeze().astype(np.uint32), features, ignoreLabel=0
@@ -261,7 +263,9 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             cleaned["Coord<Maximum>"] += 1
         return cleaned
 
-    def compute_global(self, image, labels, features, axes):
+    def compute_global(
+        self, image: vigra.VigraArray, labels: vigra.VigraArray, features: PartialFeatureDict, axes: str
+    ) -> dict[str, FloatArray]:
         features = list(features.keys())
         local = [x + self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
@@ -277,15 +281,18 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         return self._do_4d(image, labels, features, axes)
 
-    def compute_local(self, image, binary_bbox, feature_dict, axes):
+    def compute_local(
+        self, image: vigra.VigraArray, binary_bbox: vigra.VigraArray, features: PartialFeatureDict, axes: str
+    ) -> dict[str, FloatArray]:
         """helper that deals with individual objects"""
+        import ilastik.applets.objectExtraction.opObjectExtraction
 
-        featurenames = list(feature_dict.keys())
+        featurenames = list(features.keys())
         local = [x + self.local_suffix for x in self.local_features]
         featurenames = list(set(featurenames) & set(local))
         featurenames = [x.split(" ")[0] for x in featurenames]
         results = []
-        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({"": feature_dict})
+        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({"": features})
         # FIXME: this is done globally as if all the features have the same margin
         # we should group features by their margins
         passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)

@@ -1,9 +1,0 @@
-[Core]
-Name = Standard Object Features
-Module = vigra_objfeats
-
-[Documentation]
-Author = Kemal Eren
-Version = 0.1
-Website = todo
-Description = todo

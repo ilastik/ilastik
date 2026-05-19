@@ -23,6 +23,8 @@ import vigra
 import numpy
 import logging
 
+from ilastik.plugins.types import FeatureDict, FloatArray, PartialFeatureDict, PluginInfo
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,11 +50,13 @@ def cleanup(d, nObjects, features):
 
 class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
 
+    plugin_info = PluginInfo(name="2D Skeleton Features", author="Janez Ales", version="0.1", description="todo")
+
     local_preffix = "Skeleton "  # note the space at the end, it's important
 
     ndim = None
 
-    def availableFeatures(self, image, labels):
+    def availableFeatures(self, image: vigra.VigraArray, labels: vigra.VigraArray) -> PartialFeatureDict:
         names = vigra.analysis.supportedSkeletonFeatures(labels)
         logger.debug("2D Skeleton Features: Supported Skeleton Features: done.")
 
@@ -64,8 +68,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
 
         return result
 
-    @staticmethod
-    def fill_properties(features):
+    def fill_properties(self, features: PartialFeatureDict) -> FeatureDict:
         # fill in the detailed information about the features.
         # features should be a dict with the feature_name as key.
         # NOTE, this function needs to be updated every time skeleton features change
@@ -125,6 +128,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         # The background object is always present (even if there is no 0 label) and is always removed here
         return cleanup(result, nobj, features)
 
-    def compute_global(self, image, labels, features, axes):
-
+    def compute_global(
+        self, image: vigra.VigraArray, labels: vigra.VigraArray, features: PartialFeatureDict, axes: str
+    ) -> dict[str, FloatArray]:
         return self._do_4d(image, labels, list(features.keys()), axes)

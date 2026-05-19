@@ -43,3 +43,26 @@ def test_manager_raises_when_plugin_not_found():
     assert manager.get_tracking_export_plugins() == []
     with pytest.raises(PluginNotFound):
         manager.get_tracking_export_plugin_by_name("DoesNotExist")
+
+
+def test_default_object_feature_plugins_found():
+    oc_plugins = plugin_manager.get_object_feature_plugins()
+
+    assert all(isinstance(p, ObjectFeaturesPlugin) for p in oc_plugins)
+
+    expected_plugin_names = [
+        "TestFeatures",
+        "Standard Object Features",
+        "2D Convex Hull Features",
+        "3D Convex Hull Features",
+        "2D Skeleton Features",
+        "Spherical Texture",
+    ]
+    plugin_names = [p.plugin_info.name for p in oc_plugins]
+
+    missing = []
+    for plugin_name in expected_plugin_names:
+        if not plugin_name in plugin_names:
+            missing.append(plugin_name)
+
+    assert not missing
