@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,7 +22,6 @@ from __future__ import absolute_import
 import logging
 
 logger = logging.getLogger(__name__)
-from ilastik.plugins.manager import pluginManager
 
 try:
     from .countingWorkflow import *

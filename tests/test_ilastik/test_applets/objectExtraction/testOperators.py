@@ -29,7 +29,6 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
-from ilastik.plugins.manager import pluginManager
 
 import warnings
 

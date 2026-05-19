@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,46 +18,71 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import os
-import sys
 from collections import namedtuple
-
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
-
-from yapsy.PluginManager import PluginManager
-
-from ilastik.config import cfg
+from dataclasses import dataclass
+from importlib.metadata import entry_points
+from typing import Type
 
 from .types import ObjectFeaturesPlugin, TrackingExportFormatPlugin
 
-# these directories are searched for plugins
-plugin_paths = cfg.get("ilastik", "plugin_directories")
-plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(",") if len(d) > 0)
-plugin_paths.append(os.path.join(os.path.split(os.path.split(__file__)[0])[0], "plugins_default"))
 
-# Add directories from registered entrypoints
-for ep in entry_points(group="ilastik.objectfeatures"):
-    plugin_paths.append(os.path.split(ep.load().__file__)[0])
+class PluginNotFound(BaseException):
+    pass
+
+
+@dataclass
+class PluginManager:
+    _object_feature_plugins: dict[str, Type[ObjectFeaturesPlugin]]
+    _tracking_export_plugins: dict[str, Type[TrackingExportFormatPlugin]]
+
+    def get_object_feature_plugins(self) -> list[ObjectFeaturesPlugin]:
+        return [plugin() for plugin in self._object_feature_plugins.values()]
+
+    def get_object_feature_plugin_by_name(self, name: str) -> ObjectFeaturesPlugin:
+        if name not in self._object_feature_plugins:
+            raise PluginNotFound(
+                f"Could not find object feature plugin by {name=}. Available plugins: {','.join(self._object_feature_plugins.keys())}"
+            )
+        return self._object_feature_plugins[name]()
+
+    def get_tracking_export_plugins(self) -> list[TrackingExportFormatPlugin]:
+        return [plugin() for plugin in self._tracking_export_plugins.values()]
+
+    def get_tracking_export_plugin_by_name(self, name: str) -> TrackingExportFormatPlugin:
+        if name not in self._tracking_export_plugins:
+            raise PluginNotFound(
+                f"Could not find tacking export plugin by {name=}. Available plugins: {','.join(self._tracking_export_plugins.keys())}"
+            )
+        return self._tracking_export_plugins[name]()
+
+
+object_classification_plugins: dict[str, Type[ObjectFeaturesPlugin]] = {}
+for ep in entry_points(group="ilastik.objectfeature_plugins.default"):
+    plugin_cls = ep.load()
+    assert issubclass(plugin_cls, ObjectFeaturesPlugin)
+    object_classification_plugins[plugin_cls.plugin_info.name] = plugin_cls
+
+# third-party plugins
+for ep in entry_points(group="ilastik.objectfeature_plugins"):
+    plugin_cls = ep.load()
+    assert issubclass(plugin_cls, ObjectFeaturesPlugin), f"Could not load plugin {ep.name} of type {plugin_cls}"
+    object_classification_plugins[plugin_cls.plugin_info.name] = plugin_cls
+
+tracking_plugins: dict[str, Type[TrackingExportFormatPlugin]] = {}
+for ep in entry_points(group="ilastik.tracking_export_plugins.default"):
+    plugin_cls = ep.load()
+    assert issubclass(plugin_cls, TrackingExportFormatPlugin)
+    tracking_plugins[plugin_cls.plugin_info.name] = plugin_cls
+
+# third-party plugins
+for ep in entry_points(group="ilastik.tracking_export_plugins"):
+    plugin_cls = ep.load()
+    assert issubclass(plugin_cls, TrackingExportFormatPlugin)
+    tracking_plugins[plugin_cls.plugin_info.name] = plugin_cls
 
 # Helper class used to pass the necessary context information to the export plugin
 PluginExportContext = namedtuple(
     "PluginExportContext", ["objectFeaturesSlot", "labelImageSlot", "rawImageSlot", "additionalPluginArgumentsSlot"]
 )
 
-###############
-# the manager #
-###############
-
-pluginManager = PluginManager()
-pluginManager.setPluginPlaces(plugin_paths)
-
-pluginManager.setCategoriesFilter(
-    {"ObjectFeatures": ObjectFeaturesPlugin, "TrackingExportFormats": TrackingExportFormatPlugin}
-)
-
-pluginManager.collectPlugins()
-for pluginInfo in pluginManager.getAllPlugins():
-    pluginManager.activatePluginByName(pluginInfo.name)
+plugin_manager = PluginManager(object_classification_plugins, tracking_plugins)
