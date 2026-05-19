@@ -1,0 +1,45 @@
+from unittest.mock import Mock
+
+import pytest
+
+from ilastik.plugins.manager import PluginManager, PluginNotFound, plugin_manager
+from ilastik.plugins.types import ObjectFeaturesPlugin, TrackingExportFormatPlugin
+
+A = object()
+B = object()
+
+
+def test_manager_instantiates_plugins():
+    oc_mock = Mock(return_value=A)
+    tr_mock = Mock(return_value=B)
+    manager = PluginManager({"OC1": oc_mock}, {"TR1": tr_mock, "TR2": Mock()})
+
+    oc_mock.assert_not_called()
+    oc_plugin = manager.get_object_feature_plugin_by_name("OC1")
+    assert oc_plugin == A
+    oc_mock.assert_called_once()
+
+    tr_mock.assert_not_called()
+    tr_plugin = manager.get_tracking_export_plugin_by_name("TR1")
+    assert tr_plugin == B
+    tr_mock.assert_called_once()
+
+    oc_plugins = manager.get_object_feature_plugins()
+    assert len(oc_plugins) == 1
+    assert oc_mock.call_count == 2
+
+    tr_plugins = manager.get_tracking_export_plugins()
+    assert len(tr_plugins) == 2
+    assert tr_mock.call_count == 2
+
+
+def test_manager_raises_when_plugin_not_found():
+    manager = PluginManager({}, {})
+
+    assert manager.get_object_feature_plugins() == []
+    with pytest.raises(PluginNotFound):
+        manager.get_object_feature_plugin_by_name("DoesNotExist")
+
+    assert manager.get_tracking_export_plugins() == []
+    with pytest.raises(PluginNotFound):
+        manager.get_tracking_export_plugin_by_name("DoesNotExist")
