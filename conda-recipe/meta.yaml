@@ -43,7 +43,7 @@ outputs:
         - greenlet
         - grpcio !=1.42.*
         - h5py
-        - hytra >=1.2.0
+        - hytra >=1.2.1
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
         - ilastiktools
@@ -73,7 +73,6 @@ outputs:
         - tifffile >=2022
         - vigra 1.12.2
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
-        - yapsy
         - z5py
         - zarr 2.*
       run_constrained:
@@ -133,7 +132,7 @@ outputs:
         - torchvision
         - volumina
         # Third-party object feature plugins
-        - sphericaltexture_plugin
+        - sphericaltexture_plugin 0.1.0
 
     test:
       source_files:
