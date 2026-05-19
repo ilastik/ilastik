@@ -1,8 +1,10 @@
 from builtins import range
 import os
+import textwrap
 import numpy as np
 import h5py
 from functools import partial
+from ilastik.plugins.types import PluginInfo
 from lazyflow.request import Request, RequestPool
 
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -73,9 +75,9 @@ else:
 
                 if div is not None and len(div) > 0:
                     ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                    ds.attrs[
-                        "Format"
-                    ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                    ds.attrs["Format"] = (
+                        "ancestor (previous file), descendant (current file), descendant (current file)"
+                    )
 
                 if mer is not None and len(mer) > 0:
                     ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
@@ -92,10 +94,23 @@ else:
     class TrackingH5EventExportFormatPlugin(TrackingExportFormatPlugin):
         """H5 Sequence export"""
 
+        plugin_info = PluginInfo(
+            name="H5-Event-Sequence",
+            author="Carsten Haubold",
+            version="0.1",
+            website="ilastik.org",
+            description=textwrap.dedent(
+                """
+                H5 event sequence export for use of some tracking analysis tools developed by the ilastik tracking guys.
+                <br><br>
+                <b>Usage:</b> Select the folder where you want to save a time sequence of h5-files numbered incrementally (e.g. <i>00000.h5</i>).
+                """
+            ),
+        )
         exportsToFile = False
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename)
 
         def export(self, filename, hypothesesGraph, pluginExportContext):

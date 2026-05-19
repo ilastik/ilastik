@@ -16,6 +16,18 @@ vigra_objfeats = "ilastik.plugins_default.vigra_objfeats:VigraObjFeats"
 vigra_objfeats_convex_hull = "ilastik.plugins_default.vigra_objfeats_convex_hull:VigraConvexHullObjFeats"
 vigra_objfeats_convex_hull3D = "ilastik.plugins_default.vigra_objfeats_convex_hull3D:VigraConvexHullObjFeats3D"
 vigra_objfeats_skeleton = "ilastik.plugins_default.vigra_objfeats_skeleton:VigraSkeletonObjFeats"
+
+[project.entry-points."ilastik.tracking_export_plugins.default"]
+tracking_contour_export = "ilastik.plugins_default.tracking_contour_export:TrackingContourExportFormatPlugin"
+tracking_contours_with_head_export = "ilastik.plugins_default.tracking_contours_with_head_export:TrackingContoursBodyPartsPlugin"
+tracking_csv_export = "ilastik.plugins_default.tracking_csv_export:TrackingCSVExportFormatPlugin"
+tracking_ctc_export = "ilastik.plugins_default.tracking_ctc_export:TrackingCTCExportFormatPlugin"
+tracking_h5_event_export = "ilastik.plugins_default.tracking_h5_event_export:TrackingH5EventExportFormatPlugin"
+tracking_json_export = "ilastik.plugins_default.tracking_json_export:TrackingJSONExportFormatPlugin"
+tracking_mamut_export = "ilastik.plugins_default.tracking_mamut_export:TrackingMamutExportFormatPlugin"
+tracking_mwt_export = "ilastik.plugins_default.tracking_mwt_export:TrackingContourExportFormatPlugin"
+
+
 [tool.setuptools]
 include-package-data = true
 

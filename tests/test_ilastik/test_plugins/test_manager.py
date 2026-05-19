@@ -66,3 +66,28 @@ def test_default_object_feature_plugins_found():
             missing.append(plugin_name)
 
     assert not missing
+
+
+def test_default_tracking_export_plugins_found():
+    tr_plugins = plugin_manager.get_tracking_export_plugins()
+
+    assert all(isinstance(p, TrackingExportFormatPlugin) for p in tr_plugins)
+
+    expected_plugin_names = [
+        "Contours",
+        "Contours-With-Head",
+        "CSV-Table",
+        "CellTrackingChallenge",
+        "H5-Event-Sequence",
+        "JSON",
+        "Fiji-MaMuT",
+        "Multi-Worm-Tracker",
+    ]
+    plugin_names = [p.plugin_info.name for p in tr_plugins]
+
+    missing = []
+    for plugin_name in expected_plugin_names:
+        if not plugin_name in plugin_names:
+            missing.append(plugin_name)
+
+    assert not missing

@@ -1,5 +1,6 @@
 from __future__ import division
 from builtins import range
+import textwrap
 from past.utils import old_div
 import os.path
 import numpy as np
@@ -7,6 +8,7 @@ from ilastik.plugins import TrackingExportFormatPlugin
 import vigra
 
 from functools import partial
+from ilastik.plugins.types import PluginInfo
 from lazyflow.request import Request, RequestPool
 
 from skimage import measure
@@ -15,6 +17,19 @@ from skimage import measure
 class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
     """MWT export"""
 
+    plugin_info = PluginInfo(
+        name="Multi-Worm-Tracker",
+        author="Jaime I. Cervantes",
+        version="0.1",
+        website="ilastik.org",
+        description=textwrap.dedent(
+            """
+            Plugin to export the ilastik tracking results in the Multi-Worm Tracker format (.blobs and .summary files).
+            The .blobs file contains properties of the larvae and a the compressed contours in a string.
+            More information on this format can be found in the MWT Users Guide by Rex Kerr.
+            """
+        ),
+    )
     exportsToFile = True
 
     def checkFilesExist(self, filename):

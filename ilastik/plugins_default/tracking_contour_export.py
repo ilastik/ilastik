@@ -1,10 +1,13 @@
 from builtins import range
 import os.path
+import textwrap
+
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 import vigra
 
 from functools import partial
+from ilastik.plugins.types import PluginInfo
 from lazyflow.request import Request, RequestPool
 
 from skimage import measure
@@ -12,6 +15,26 @@ from skimage import measure
 
 class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
     """Contour export"""
+
+    plugin_info = PluginInfo(
+        name="Contours",
+        author="Jaime I. Cervantes",
+        version="0.1",
+        website="ilastik.org",
+        description=textwrap.dedent(
+            """
+            Plugin to export the ilastik tracking results as contours (used mainly to export larvae contours for Zlatics Lab).
+            Each .outline file consists of a line for each frame the animal is tracked for.
+            The first number on this line is the timestamp of the frame, followed by the id, and an unused number left as 0.000,
+            and then the rest of numbers are the (x,y) coordinates of the contour points (in pixels).
+            Numbers are separated by a single white space.
+            <br><br>
+            <b>Usage:</b> Select the filename where the contours will be saved to an ASCII file.
+            <br><br>
+            The resulting file will contain a list of 3 words, followed by the (x,y) coordinates for the contour information of each object.
+        """
+        ),
+    )
 
     exportsToFile = True
 
