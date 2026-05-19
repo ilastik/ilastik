@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -47,7 +47,6 @@ logging_config: ~/custom_ilastik_logging_config.json
 default_config = """
 [ilastik]
 debug: false
-plugin_directories: ~/.ilastik/plugins,
 output_filename_format: {dataset_dir}/{nickname}_{result_type}
 output_format: compressed hdf5
 
@@ -77,8 +76,39 @@ def _init(path: Union[None, str, bytes, os.PathLike]) -> None:
     if config_path is not None:
         config.read(config_path)
 
+    _removal_notices(config)
+
     global cfg, cfg_path
     cfg, cfg_path = config, config_path
+
+
+def _removal_notices(config: configparser.ConfigParser):
+    """Issue warnings in the case a removed option is found in the config"""
+
+    @dataclass
+    class RemovedKey:
+        section: str
+        option: str
+        reason: str
+
+    removed_keys: tuple[RemovedKey] = (
+        RemovedKey(
+            section="ilastik",
+            option="plugin_directories",
+            reason=(
+                "Plugin system changed - not yapsy-based anymore, but via entrypoints. "
+                "Plugins from the folder {value} will not be loaded. "
+                "Please contact the ilastik team via email: team@ilastik.org."
+            ),
+        ),
+    )
+    for removed in removed_keys:
+        try:
+            val = config.get(removed.section, removed.option)
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            pass
+        else:
+            warnings.warn(removed.reason.format(value=val))
 
 
 def _get_default_config_path() -> Optional[Path]:
