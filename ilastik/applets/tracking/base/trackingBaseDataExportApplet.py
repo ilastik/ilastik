@@ -30,7 +30,7 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.opDataExport import DataExportPathFormatter
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 from ilastik.plugins import TrackingExportFormatPlugin
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.slot import InputSlot
@@ -223,13 +223,7 @@ class TrackingBaseDataExportApplet(DataExportApplet):
 
     def _export_with_plugin(self, lane_index: int, checkOverwriteFiles: bool, pluginName: str) -> bool:
         argsSlot = self.topLevelOperator.AdditionalPluginArguments
-        pluginInfo = pluginManager.getPluginByName(pluginName, category="TrackingExportFormats")
-
-        if pluginInfo is None:
-            logger.error("Could not find selected plugin %s", pluginName)
-            return False
-
-        plugin = pluginInfo.plugin_object
+        plugin = plugin_manager.get_tracking_export_plugin_by_name(pluginName)
         logger.info("Exporting tracking result using %s", pluginName)
 
         name_format = self.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
