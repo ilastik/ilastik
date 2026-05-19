@@ -20,10 +20,13 @@
 ###############################################################################
 import logging
 import os
+from pathlib import Path
 import traceback
 from collections import OrderedDict
 from functools import partial
 
+from bioimageio.spec import settings as bioimageio_settings
+from bioimageio.spec.utils import empty_cache as empty_bioimageio_cache
 import numpy
 import yaml
 from qtpy import uic
@@ -31,12 +34,13 @@ from qtpy.QtCore import (
     QModelIndex,
     QPersistentModelIndex,
     QStringListModel,
+    QUrl,
     Qt,
     QTimer,
     Signal,
     Slot,
 )
-from qtpy.QtGui import QColor, QIcon
+from qtpy.QtGui import QColor, QDesktopServices, QIcon
 from qtpy.QtWidgets import (
     QAction,
     QColorDialog,
@@ -378,6 +382,55 @@ class NNClassGui(LabelingGui):
         device = self.topLevelOperatorView.nn_devices
         device_entry = advanced_menu.addAction(f"Device: {device}")
         device_entry.setEnabled(False)
+
+        model_cache_dir = bioimageio_settings.cache_path
+
+        def _dir_size_human_readable(directory: Path) -> str:
+            size = sum(p.stat().st_size for p in Path(directory).rglob("*") if p.is_file())
+            for unit in ["B", "KiB", "MiB", "GiB"]:
+                if size < 1024 or unit == "GiB":
+                    size_human_readable = f"{size:.1f} {unit}" if unit != "B" else f"{size} B"
+                    break
+                size /= 1024
+            return size_human_readable
+
+        def _open():
+            if not model_cache_dir.exists():
+                QMessageBox.information(
+                    self,
+                    "Model Cache not found",
+                    f"Model cache directory at {model_cache_dir} not found. Likely no models have been downloaded yet.",
+                )
+                return
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(model_cache_dir)))
+
+        def _delete():
+            if not model_cache_dir.exists():
+                QMessageBox.information(
+                    self,
+                    "Model Cache not found",
+                    f"Model cache directory at {model_cache_dir} not found. Likely no models have been downloaded yet.",
+                )
+                return
+            sz = _dir_size_human_readable(model_cache_dir)
+            proceed = QMessageBox.question(
+                self,
+                "Do you want to delete the bioimageio cache directory?",
+                f"Do you want to delete the bioimageio cached directory {model_cache_dir} and free up {sz}?",
+            )
+            if proceed == QMessageBox.No:
+                return
+            empty_bioimageio_cache()
+            logger.info(f"Deleted bioimageio model cache: {model_cache_dir} ({sz})")
+            QMessageBox.information(
+                self,
+                "Deleted bioimageio model cache",
+                f"Model cache directory at {model_cache_dir} was deleted freeing up {sz}. Models will be re-downloaded once requested.",
+            )
+
+        advanced_menu.addAction("Show model cache").triggered.connect(_open)
+        advanced_menu.addAction("Delete model cache").triggered.connect(_delete)
+
         menus += [advanced_menu]
 
         return menus
