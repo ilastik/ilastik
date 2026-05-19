@@ -25,7 +25,7 @@ import numpy
 from qtpy import uic
 from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 
 
 # **************************************************************************
@@ -120,7 +120,7 @@ class PluginExportOptionsDlg(QDialog):
         Returns the list of available plugins
         """
         try:
-            exportPlugins = pluginManager.getPluginsOfCategory("TrackingExportFormats")
+            exportPlugins = plugin_manager.get_tracking_plugins()
             availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
 
             return availableExportPlugins
@@ -150,8 +150,8 @@ class PluginExportOptionsDlg(QDialog):
     # **************************************************************************
     def _initMetaInfoText(self):
         ## meta-info display widgets
-        plugin = pluginManager.getPluginByName(self.pluginName, category="TrackingExportFormats")
-        self.metaInfoTextEdit.setHtml(plugin.description)
+        plugin = plugin_manager.get_tracking_export_plugin_by_name(self.pluginName)
+        self.metaInfoTextEdit.setHtml(plugin.plugin_info.description)
 
     # **************************************************************************
     # File path selection and options

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,7 +19,7 @@ from __future__ import absolute_import
 # 		   http://ilastik.org/license.html
 ###############################################################################
 # to ensure that plugin system is available
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 
 import logging
 
