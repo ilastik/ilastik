@@ -93,9 +93,6 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
         Returns the list of available plugins
         """
         try:
-            import hytra
-
-            # export plugins only available with hytra backend
             exportPlugins = pluginManager.getPluginsOfCategory("TrackingExportFormats")
             availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
 
@@ -200,7 +197,6 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
         self.topLevelOperator.SelectedExportSource.setValue(sourceName)
 
     def set_default_export_filename(self, filename):
-        # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
 
     def exportAsync(self, laneViewList) -> None:

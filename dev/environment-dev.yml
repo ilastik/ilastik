@@ -13,7 +13,7 @@ dependencies:
   - greenlet
   - grpcio >=1.49.1
   - h5py
-  - hytra
+  - hytra >=1.2.0
   - ilastik-feature-selection
   - ilastikrag >=0.1.4
   - ilastiktools

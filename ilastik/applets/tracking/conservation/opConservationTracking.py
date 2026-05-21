@@ -15,8 +15,6 @@ from lazyflow.stype import Opaque
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import (
     default_features_key,
-    OpRegionFeatures,
-    OpAdaptTimeListRoi,
 )
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
@@ -28,11 +26,6 @@ from lazyflow.request import Request, RequestPool
 
 from hytra.core.jsongraph import (
     getMappingsBetweenUUIDsAndTraxels,
-    getMergersDetectionsLinksDivisions,
-    getMergersPerTimestep,
-    getLinksPerTimestep,
-    getDetectionsPerTimestep,
-    getDivisionsPerTimestep,
 )
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
@@ -129,10 +122,7 @@ class OpConservationTracking(Operator):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
 
-        # Merger resolver plugin manager (contains GMM fit routine)
-        self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), "plugins")]
-        pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = pluginManager.getMergerResolver()
+        self.gmmMergerResolver = GMMMergerResolver()
 
         self.result = None
 

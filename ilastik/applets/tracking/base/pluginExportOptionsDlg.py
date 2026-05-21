@@ -27,13 +27,6 @@ from qtpy.QtCore import Qt, QEvent
 from qtpy.QtWidgets import QDialog, QFileDialog, QMessageBox
 from ilastik.plugins.manager import pluginManager
 
-try:
-    from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-    _has_lazyflow = True
-except:
-    _has_lazyflow = False
-
 
 # **************************************************************************
 # DataExportOptionsDlg
@@ -48,8 +41,6 @@ class PluginExportOptionsDlg(QDialog):
                              temporary operator that can be discarded in case the user clicked 'cancel'.
                              If the user clicks 'OK', then copy the slot settings from the temporary op to your real one.
         """
-        global _has_lazyflow
-        assert _has_lazyflow, "This widget requires lazyflow."
         super(PluginExportOptionsDlg, self).__init__(parent)
         uic.loadUi(os.path.splitext(__file__)[0] + ".ui", self)
 
@@ -129,9 +120,6 @@ class PluginExportOptionsDlg(QDialog):
         Returns the list of available plugins
         """
         try:
-            import hytra
-
-            # export plugins only available with hytra backend
             exportPlugins = pluginManager.getPluginsOfCategory("TrackingExportFormats")
             availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
 

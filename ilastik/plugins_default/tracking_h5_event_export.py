@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 try:
     from hytra.core.jsongraph import (
-        getMappingsBetweenUUIDsAndTraxels,
         getMergersDetectionsLinksDivisions,
         getMergersPerTimestep,
         getLinksPerTimestep,
@@ -73,9 +72,9 @@ else:
 
                 if div is not None and len(div) > 0:
                     ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                    ds.attrs[
-                        "Format"
-                    ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                    ds.attrs["Format"] = (
+                        "ancestor (previous file), descendant (current file), descendant (current file)"
+                    )
 
                 if mer is not None and len(mer) > 0:
                     ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
@@ -95,7 +94,7 @@ else:
         exportsToFile = False
 
         def checkFilesExist(self, filename):
-            """ Check whether the files we want to export are already present """
+            """Check whether the files we want to export are already present"""
             return os.path.exists(filename)
 
         def export(self, filename, hypothesesGraph, pluginExportContext):

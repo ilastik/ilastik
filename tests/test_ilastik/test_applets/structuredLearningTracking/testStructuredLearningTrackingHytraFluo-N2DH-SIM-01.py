@@ -136,12 +136,6 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @timeLogged(logger)
     def testCSVExport(self):
-        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
-        try:
-            import hytra
-        except ImportError as e:
-            pytest.xfail("Hytra tracking pipeline couldn't be imported: " + str(e))
-
         args = " --project=" + self.PROJECT_FILE
         args += " --headless"
 

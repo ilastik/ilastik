@@ -15,20 +15,15 @@ from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.config import cfg as ilastik_config
-from ilastik.plugins.manager import pluginManager
 
 
 from lazyflow.request.request import Request
 
 from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.gui.progress import GuiProgressVisitor
-from ilastik.utility.progress import DefaultProgressVisitor
 
 logger = logging.getLogger(__name__)
 
-import hytra
-
-# Import solvers for HyTra
 import dpct
 
 try:
