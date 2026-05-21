@@ -252,7 +252,10 @@ class LabelingGui(LayerViewerGui):
         stylesheet = stylesheet_dark if is_qt_dark_mode() else stylesheet_light
         _labelControlUi.setStyleSheet(stylesheet)
         if hasattr(self.labelingDrawerUi, "liveUpdateButton"):
-            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
+            icon = QIcon()
+            icon.addFile(ilastikIcons.Play, state=QIcon.Off)
+            icon.addFile(ilastikIcons.Pause, state=QIcon.On)
+            self.labelingDrawerUi.liveUpdateButton.setIcon(icon)
 
         # Initialize the label list model
         model = LabelListModel()
