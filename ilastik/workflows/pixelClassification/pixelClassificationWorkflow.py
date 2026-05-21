@@ -181,19 +181,13 @@ class PixelClassificationWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        c_at_end = ["yxc", "xyc"]
-        for perm in itertools.permutations("tzyx", 3):
-            c_at_end.append("".join(perm) + "c")
-        for perm in itertools.permutations("tzyx", 4):
-            c_at_end.append("".join(perm) + "c")
-
         applet = DataSelectionApplet(
             self,
             "Input Data",
             "Input Data",
             supportIlastik05Import=True,
             instructionText=data_instructions,
-            forceAxisOrder=c_at_end,
+            forceAxisOrder=None,
         )
         applet.topLevelOperator.DatasetRoles.setValue(self.Roles.asDisplayNameList())
         return applet
