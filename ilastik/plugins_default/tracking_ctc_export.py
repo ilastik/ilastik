@@ -1,4 +1,5 @@
 import os
+import textwrap
 import numpy as np
 import vigra
 import tifffile
@@ -6,16 +7,38 @@ from ilastik.plugins import TrackingExportFormatPlugin
 
 import logging
 
+from ilastik.plugins.types import PluginInfo
+
 logger = logging.getLogger(__name__)
 
 
 class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
     """CTC export"""
 
+    plugin_info = PluginInfo(
+        name="CellTrackingChallenge",
+        author="Carsten Haubold",
+        version="0.1",
+        website="ilastik.org",
+        description=textwrap.dedent(
+            """
+            Tracking format used in the <a href="http://www.celltrackingchallenge.net/submission-of-results.html">ISBI Cell Tracking Challenges</a>
+            <br><br>
+            <b>Usage: </b> Select the folder in which the following files will be exported:
+            <ul>
+                <li> The <i>images</i> containing the segmented and tracked cells as masks (labelimages),
+                     which will be saved as one tiff file per timeframe with the names <i> t000XX.tif </i>.</li>
+                <li> A file about the <b>tracks</b> and lineages called <i> res_track.txt </i>.</li>
+            </ul>
+            <br><br>
+            See the Cell Tracking Challenge documentation for more details (http://www.celltrackingchallenge.net/submission-of-results.html).
+        """
+        ),
+    )
     exportsToFile = False
 
     def checkFilesExist(self, filename):
-        """ Check whether the files we want to export are already present """
+        """Check whether the files we want to export are already present"""
         return os.path.exists(filename)
 
     def export(self, filename, hypothesesGraph, pluginExportContext):

@@ -1,11 +1,45 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "ilastik-core"
+description = "ilastik - the interactive learning and segmentation toolkit"
+dynamic = ["version"]
+urls = { Homepage = "https://github.com/ilastik/ilastik" }
+
+# other modules can specify [project.entrypoints."ilastik.objectfeature_plugins"] to get registered
+# as for example the spherical texture feature plugin does
+[project.entry-points."ilastik.objectfeature_plugins.default"]
+test_objfeats = "ilastik.plugins_default.test_objfeats:TestFeatures"
+vigra_objfeats = "ilastik.plugins_default.vigra_objfeats:VigraObjFeats"
+vigra_objfeats_convex_hull = "ilastik.plugins_default.vigra_objfeats_convex_hull:VigraConvexHullObjFeats"
+vigra_objfeats_convex_hull3D = "ilastik.plugins_default.vigra_objfeats_convex_hull3D:VigraConvexHullObjFeats3D"
+vigra_objfeats_skeleton = "ilastik.plugins_default.vigra_objfeats_skeleton:VigraSkeletonObjFeats"
+
+[project.entry-points."ilastik.tracking_export_plugins.default"]
+tracking_contour_export = "ilastik.plugins_default.tracking_contour_export:TrackingContourExportFormatPlugin"
+tracking_contours_with_head_export = "ilastik.plugins_default.tracking_contours_with_head_export:TrackingContoursBodyPartsPlugin"
+tracking_csv_export = "ilastik.plugins_default.tracking_csv_export:TrackingCSVExportFormatPlugin"
+tracking_ctc_export = "ilastik.plugins_default.tracking_ctc_export:TrackingCTCExportFormatPlugin"
+tracking_h5_event_export = "ilastik.plugins_default.tracking_h5_event_export:TrackingH5EventExportFormatPlugin"
+tracking_json_export = "ilastik.plugins_default.tracking_json_export:TrackingJSONExportFormatPlugin"
+tracking_mamut_export = "ilastik.plugins_default.tracking_mamut_export:TrackingMamutExportFormatPlugin"
+tracking_mwt_export = "ilastik.plugins_default.tracking_mwt_export:TrackingContourExportFormatPlugin"
+
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ilastik*", "lazyflow*"]
+
+[tool.setuptools_scm]
+version_file = "ilastik/_version.py"
 
 [tool.black]
 line-length = 120
-target-version = ["py38", "py39", "py310", "py311"]
-
+target-version = ["py310", "py311", "py312"]
 
 [tool.isort]
 line_length = 120

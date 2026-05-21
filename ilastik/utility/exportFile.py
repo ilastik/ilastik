@@ -14,7 +14,7 @@ from typing import Iterator, List, Tuple
 
 logger = logging.getLogger(__name__)
 
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 
 
 class Default(object):
@@ -102,12 +102,12 @@ def flatten_ilastik_feature_table(table, selection, signal):
         all_props = None
 
         if plugin_name == default_features_key:
-            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+            plugin_object = plugin_manager.get_object_feature_plugin_by_name("Standard Object Features")
         else:
-            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-        if plugin:
-            plugin_feature_names = {el: {} for el in list(feature_spec.keys())}
-            all_props = plugin.plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
+            plugin_object = plugin_manager.get_object_feature_plugin_by_name(plugin_name)
+
+        plugin_feature_names = {el: {} for el in list(feature_spec.keys())}
+        all_props = plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
 
         for feat_name, (feat_array_ch, feat_array_dtype) in feature_spec.items():
             if all_props:

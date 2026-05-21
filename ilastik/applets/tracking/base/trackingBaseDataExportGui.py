@@ -20,7 +20,7 @@
 ###############################################################################
 from qtpy.QtWidgets import QPushButton, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 import volumina.colortables as colortables
@@ -96,8 +96,8 @@ class TrackingBaseDataExportGui(DataExportGui, ExportingGui):
             import hytra
 
             # export plugins only available with hytra backend
-            exportPlugins = pluginManager.getPluginsOfCategory("TrackingExportFormats")
-            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+            exportPlugins = plugin_manager.get_tracking_export_plugins()
+            availableExportPlugins = [plugin.plugin_info.name for plugin in exportPlugins]
 
             return availableExportPlugins
         except ImportError:

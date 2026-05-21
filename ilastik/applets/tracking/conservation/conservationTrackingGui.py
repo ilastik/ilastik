@@ -15,7 +15,6 @@ from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.config import cfg as ilastik_config
-from ilastik.plugins.manager import pluginManager
 
 
 from lazyflow.request.request import Request
