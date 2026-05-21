@@ -1,8 +1,12 @@
-{% set setup_py_data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set setup_py_data = load_setup_py_data(setup_file='../conda-build-setup.py', from_recipe_dir=True) %}
+{% set version = setup_py_data.version %}
+
+
+{% set PYTHON = PYTHON | default("$PYTHON") %}
 
 package:
   name: ilastik-package-meta-recipe
-  version: {{ setup_py_data.version }}
+  version: {{version}}
 
 source:
   path: ..
@@ -15,15 +19,15 @@ outputs:
       number: 0
       noarch: python
       script_env:
-        - SETUPTOOLS_SCM_PRETEND_VERSION={{ setup_py_data.version }}
+        - SETUPTOOLS_SCM_PRETEND_VERSION={{version}}
       script:
-        - python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv
+        - {{PYTHON}} -m pip install . --no-deps -vv
     requirements:
       host:
         - python >=3.10
         - pip
-        - setuptools >=40.0
-        - setuptools_scm
+        - setuptools >=64.0
+        - setuptools_scm >=6.2
       run:
         - python >=3.10
         - numpy >1.12,<1.27
