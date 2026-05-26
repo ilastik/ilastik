@@ -155,10 +155,11 @@ class TrainableDomainAdaptationGui(PixelClassificationGui):
         self.addModel.setTiktorchModel(self.tiktorchModel)
 
         tda_layout = QGridLayout()
-        tda_layout.addWidget(self.addModel, 0, 2, 1, 2)
         tda_layout.addWidget(QLabel("Model"), 0, 0)
+        tda_layout.addWidget(self.addModel, 0, 1)
         tda_layout.addWidget(QLabel("Channels"), 1, 0)
-        tda_layout.addWidget(channel_selector, 1, 2, 1, 2)
+        tda_layout.addWidget(channel_selector, 1, 1)
+        tda_layout.setColumnStretch(1, 1)
 
         box = QGroupBox("Enhancer Settings")
         box.setLayout(tda_layout)

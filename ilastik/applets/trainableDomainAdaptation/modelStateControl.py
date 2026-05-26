@@ -42,6 +42,7 @@ class BioImageModelCombo(QComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setEditable(False)
+        self.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.refresh()
         self.currentIndexChanged.connect(self.onIndexChange)
 
