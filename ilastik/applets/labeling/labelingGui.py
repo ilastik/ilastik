@@ -228,9 +228,9 @@ class LabelingGui(LayerViewerGui):
         radius = round(0.25 * em)
         border = max(1, round(0.06 * em))
         stylesheet_light = f"""
-            QToolButton#suggestFeaturesButton {{ padding: {pad_small}px; height: {height}px; }}
+            QToolButton#suggestFeaturesButton {{ padding: {pad_small}px 0px; height: {height}px; }}
             QToolButton#liveUpdateButton {{
-                padding: {pad_large}px; height: {height}px; border-width: {border}px; border-radius: {radius}px;
+                padding: {pad_large}px {pad_small}px; height: {height}px; border-width: {border}px; border-radius: {radius}px;
                 border-style: solid; border-color: #aaccaa; background-color: #eeffee; }}
             QToolButton#liveUpdateButton:hover {{ border-color: #a0c0a0; background-color: #c0e0c0; }}
             QToolButton#liveUpdateButton:pressed {{ border-color: #557755; background-color: #779977; }}
@@ -239,9 +239,9 @@ class LabelingGui(LayerViewerGui):
         """
 
         stylesheet_dark = f"""
-            QToolButton#suggestFeaturesButton {{ padding: {pad_small}px; height: {height}px; }}
+            QToolButton#suggestFeaturesButton {{ padding: {pad_small}px 0px; height: {height}px; }}
             QToolButton#liveUpdateButton {{
-                padding: {pad_large}px; height: {height}px; border-width: {border}px; border-radius: {radius}px;
+                padding: {pad_large}px {pad_small}px; height: {height}px; border-width: {border}px; border-radius: {radius}px;
                 border-color: #97b6b7; background-color: #638182; }}
             QToolButton#liveUpdateButton:hover {{ border-color: #befcfe; background-color: #7ab5b8; }}
             QToolButton#liveUpdateButton:pressed {{ border-color: #a0acbd; background-color: #637a95; }}
@@ -252,7 +252,10 @@ class LabelingGui(LayerViewerGui):
         stylesheet = stylesheet_dark if is_qt_dark_mode() else stylesheet_light
         _labelControlUi.setStyleSheet(stylesheet)
         if hasattr(self.labelingDrawerUi, "liveUpdateButton"):
-            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
+            icon = QIcon()
+            icon.addFile(ilastikIcons.Play, state=QIcon.Off)
+            icon.addFile(ilastikIcons.Pause, state=QIcon.On)
+            self.labelingDrawerUi.liveUpdateButton.setIcon(icon)
 
         # Initialize the label list model
         model = LabelListModel()
