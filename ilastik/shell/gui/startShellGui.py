@@ -25,6 +25,8 @@ from pathlib import Path
 # make the program quit on Ctrl+C
 import signal
 
+from ilastik.shell.gui.iconMgr import ilastikIcons
+
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from qtpy.QtWidgets import QApplication, QSplashScreen
@@ -66,7 +68,7 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
 
     app = QApplication(["ilastik"])
     _applyStyleSheet(app)
-
+    app.setWindowIcon(ilastikIcons.Ilastik())
     splash = getSplashScreen()
     splash.show()
     app.processEvents()
