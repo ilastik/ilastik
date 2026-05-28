@@ -39,9 +39,9 @@ jobs:
       - id: version
         shell: bash -l {0}
         run: |
-          vers=$( python setup.py --version )
+          vers=$( python conda-build-setup.py --version )
           echo "version=${vers}" >> $GITHUB_OUTPUT
-      - name: linux conda build test
+      - name: linux conda build
         shell: bash -l {0}
         run: |
           mkdir -p ./pkgs/noarch
