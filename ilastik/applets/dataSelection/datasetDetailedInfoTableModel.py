@@ -19,17 +19,15 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 
-import json
 from collections import OrderedDict
 from functools import reduce
-from typing import Dict, List
-
+from typing import List, Set
 
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod, eq_shapes
-from lazyflow.utility.io_util.multiscaleStore import Multiscale
+from lazyflow.utility.io_util.clearscale import Scale, Multiscale, Shape as ClearscaleShape
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
@@ -45,12 +43,12 @@ class DatasetColumn:
     NumColumns = 7
 
 
-def _dims_to_display_string(dimensions: Dict[str, int], axiskeys: str, dtype: type) -> str:
+def _dims_to_display_string(scale: Scale, dtype: type) -> str:
     """Generate labels to put into the scale combobox / to display in the table.
-    XYZ dimensions will be reordered to match axiskeys."""
-    reordered_dimensions = [dimensions[axis] for axis in axiskeys if axis in "xyz"]
-    shape_string = " / ".join(str(size) for size in reordered_dimensions)
-    scale_file_size = bigintprod(reordered_dimensions) * dtype().nbytes
+    Aim: XYZ dimensions + data size, but in original axis order"""
+    xyz_shape = scale.shape.without_axes_except("xyz").to_list()
+    shape_string = " / ".join(str(size) for size in xyz_shape)
+    scale_file_size = bigintprod(xyz_shape) * dtype().nbytes
     size_labels = {1e15: "PB", 1e12: "TB", 1e9: "GB", 1e6: "MB", 1e3: "KB", 1: "B"}
     size_factor = [f for f in size_labels.keys() if scale_file_size >= f][0]
     size_string = f"{scale_file_size / size_factor:.1f} {size_labels[size_factor]}"
@@ -223,9 +221,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return str(datasetInfo.drange or "")
         if index.column() == DatasetColumn.Scale:
             if datasetInfo.scales:
-                return _dims_to_display_string(
-                    datasetInfo.scales[datasetInfo.working_scale], datasetInfo.axiskeys, datasetInfo.laneDtype
-                )
+                return _dims_to_display_string(datasetInfo.scales[datasetInfo.working_scale], datasetInfo.laneDtype)
             return UninitializedDisplayData[index.column()]
 
         if index.column() == DatasetColumn.PixelSize:
@@ -275,8 +271,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # is the first option in the drop-down box
         return OrderedDict(
             {
-                key: _dims_to_display_string(tagged_shape, datasetInfo.axiskeys, datasetInfo.laneDtype)
-                for key, tagged_shape in reversed(datasetInfo.scales.items())
+                key: _dims_to_display_string(scale, datasetInfo.laneDtype)
+                for key, scale in reversed(datasetInfo.scales.items())
             }
         )
 
@@ -286,16 +282,16 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         Return indices of the options from `get_scale_options` that have matching scales in all other roles.
         """
 
-        def shapes_intersection(shapes1: List[Dict[str, int]], shapes2: List[Dict[str, int]]):
-            return [s1 for s1 in shapes1 if any(eq_shapes(s1, s2) for s2 in shapes2)]
+        def shapes_intersection(shapes1: Set[ClearscaleShape], shapes2: Set[ClearscaleShape]):
+            return {s1 for s1 in shapes1 if any(eq_shapes(s1, s2) for s2 in shapes2)}
 
         # Checking if ready etc. shouldn't be necessary here because this should only be called
         # while building the scale dropdown (by which point everything should be ready).
-        scale_shapes_per_role: List[List[OrderedDict[str, int]]] = [
+        scale_shapes_per_role: List[Set[ClearscaleShape]] = [
             (
-                list(role_slot.value.scales.values())
+                set(role_slot.value.scales.keys_by_shape)
                 if role_slot.value.scales
-                else [dict(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))]
+                else {ClearscaleShape(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))}
             )
             for role_slot in self._op.DatasetGroupOut[laneIndex]
             if role_slot.ready()
@@ -304,8 +300,8 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         scale_options: Multiscale = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
         indices_of_common_scales = []
-        for i, shape in enumerate(reversed(scale_options.values())):
-            if any(eq_shapes(shape, common_shape) for common_shape in common_scale_shapes):
+        for i, scale in enumerate(reversed(scale_options.values())):
+            if any(eq_shapes(scale.shape, common_shape) for common_shape in common_scale_shapes):
                 indices_of_common_scales.append(i)
         return indices_of_common_scales
 
