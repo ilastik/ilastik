@@ -22,7 +22,7 @@
 
 from functools import reduce
 from operator import mul
-from typing import Iterable, Tuple, Type, Union, Dict
+from typing import Iterable, Tuple, Type, Union, Mapping
 import sys
 import numbers
 import numpy
@@ -165,8 +165,10 @@ def get_ram_per_element(dtype: Union[Type[object], numpy.dtype]) -> int:
         return sys.getsizeof(None)
 
 
-def eq_shapes(test: Dict[str, int], ref: Dict[str, int]) -> bool:
+def eq_shapes(test: Mapping[str, int], ref: Mapping[str, int]) -> bool:
     """Check if two tagged shapes are equal. Ignore channel. Additional singleton axes are ok."""
+    if hasattr(test, "without_axes") and hasattr(ref, "without_axes"):
+        return test.without_axes("c").without_singletons() == ref.without_axes("c").without_singletons()
     common_axes = set(test.keys()) & set(ref.keys())
     extra_axes = set(test.keys()) ^ set(ref.keys())
     common_match = all(test[a] == ref[a] for a in common_axes if a != "c")

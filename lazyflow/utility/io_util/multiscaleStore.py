@@ -19,21 +19,18 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 from typing import Tuple
 
 import numpy
 import vigra
 
 from lazyflow.slot import OutputSlot
-from lazyflow.utility.io_util.clearscale import Scale
+from lazyflow.utility.io_util.clearscale import Multiscale
 
-# See MultiscaleStore docstring for details
-Multiscale = OrderedDict[str, Scale]
 DEFAULT_SCALE_KEY = ""
 
 
-def set_multiscale_meta(slot: OutputSlot, multiscale: "Multiscale", active_scale_key: str):
+def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
     """Updates slot.meta with multiscale, and pixel size for active scale."""
     assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
     assert slot.meta.axistags is not None, "multiscale can not be used to update slot metadata missing axistags."
@@ -41,7 +38,7 @@ def set_multiscale_meta(slot: OutputSlot, multiscale: "Multiscale", active_scale
     if active_scale.has_pixel_size():
         active_scale.spacing.to_vigra(slot.meta.axistags)
         slot.meta.axis_units = dict(active_scale.unit)
-    slot.meta.scales = OrderedDict([(key, scale.shape) for key, scale in multiscale.items()])
+    slot.meta.scales = multiscale
     slot.meta.active_scale = active_scale_key  # Used by export to correlate export with input scale
 
 
@@ -69,10 +66,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         :param uri: Location where this store was initialized (as passed to __init__).
         :param dtype: The dataset's numpy dtype.
         :param axistags: vigra.AxisTags describing the dataset's axes.
-        :param multiscale: Dict of scales for GUI and OME-Zarr export, {key: tagged shape}
-            Order from highest to lowest resolution (i.e. largest to smallest shape).
-            Keys: absolute identifiers for each scale as found in the dataset.
-            Axis order of all scales must match axistags.
+        :param multiscale: clearscale.Multiscale holding scale metadata (keys, shapes, pixel sizes, translations)
         :param lowest_resolution_key: Key of the lowest-resolution scale within the multiscale dict.
             This acts as the default scale after load until the user selects a different one.
         :param highest_resolution_key: Used to infer the maximum dataset size, and for legacy HBP-mode projects.
@@ -83,13 +77,6 @@ class MultiscaleStore(metaclass=ABCMeta):
         self.multiscale = multiscale
         self.lowest_resolution_key = lowest_resolution_key
         self.highest_resolution_key = highest_resolution_key
-        scale_keys = list(self.multiscale.keys())
-        assert (
-            self.highest_resolution_key == scale_keys[0] and self.lowest_resolution_key == scale_keys[-1]
-        ), "Multiscale dict must be ordered from highest to lowest resolution (i.e. largest to smallest shape)"
-        assert all(
-            list(scale.shape.keys()) == axistags.keys() for scale in self.multiscale.values()
-        ), "Multiscale values must match given axistags"
 
     @abstractmethod
     def get_shape(self, scale_key: str) -> Tuple[int]:
