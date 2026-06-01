@@ -618,19 +618,19 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return super().from_h5_group(group, params)
 
     def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
-        for scale, shape in self.scales.items():
-            if eq_shapes(shape, target_shape):
-                return scale
+        for scale_key, scale in self.scales.items():
+            if eq_shapes(scale.shape, target_shape):
+                return scale_key
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
     def has_scale_matching_shape(self, target_shape: Dict[str, int]) -> bool:
-        return any(eq_shapes(shape, target_shape) for shape in self.scales.values())
+        return any(eq_shapes(scale.shape, target_shape) for scale in self.scales.values())
 
     def switch_to_scale_with_shape(self, target_shape: Dict[str, int]):
-        for scale, shape in self.scales.items():
-            if eq_shapes(shape, target_shape):
-                self.working_scale = scale
-                self.laneShape = tuple(self.scales[scale].values())
+        for scale_key, scale in self.scales.items():
+            if eq_shapes(scale.shape, target_shape):
+                self.working_scale = scale_key
+                self.laneShape = scale.shape.to_tuple()
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 

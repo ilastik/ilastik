@@ -32,12 +32,11 @@ import h5py
 import pytest
 import zarr
 
-from collections import OrderedDict
 from typing import Tuple, List
 from PIL import Image
 
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations, NotAnOMEZarrMultiscale
-from lazyflow.utility.io_util.multiscaleStore import Multiscale
+from lazyflow.utility.io_util.clearscale import Multiscale
+from lazyflow.utility.io_util.OMEZarrStore import NotAnOMEZarrMultiscale
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
 
@@ -310,9 +309,7 @@ class TestOpInputDataReaderWithOMEZarr:
             ("some.zarr/A/1/0", "s0", "s1"),  # well (./row/column/field-of-view/scales)
         ],
     )
-    def ome_zarr_store_on_disc(
-        self, tmp_path, request, monkeypatch
-    ) -> Tuple[PathTuple, List[numpy.array], Multiscale, OMEZarrTranslations]:
+    def ome_zarr_store_on_disc(self, tmp_path, request, monkeypatch) -> Tuple[PathTuple, List[numpy.array], Multiscale]:
         """Sets up a zarr store of a random image at raw scale and a downscale.
         Returns dataset paths, datasets, and the metadata expected on the
         reader's output slot."""
@@ -383,17 +380,11 @@ class TestOpInputDataReaderWithOMEZarr:
         )
 
         expected_images = [image_original, image_scaled]
-        # Scales metadata for GUI
-        expected_multiscale = OrderedDict(
-            [
-                (path0, OrderedDict(zip("cyx", dataset_shape))),
-                (path1, OrderedDict(zip("cyx", scaled_shape))),
-            ]
+        expected_multiscale = Multiscale.from_ome_zarr(
+            correct_multiscale_zattrs, get_shape=lambda path: tuple({path0: dataset_shape, path1: scaled_shape}[path])
         )
-        # OME-Zarr metadata for export
-        expected_additional_meta = OMEZarrTranslations.from_multiscale_spec(correct_multiscale_zattrs, "cyx")
 
-        return request.param, expected_images, expected_multiscale, expected_additional_meta
+        return request.param, expected_images, expected_multiscale
 
     @pytest.fixture
     def parent(self, graph):
@@ -401,7 +392,7 @@ class TestOpInputDataReaderWithOMEZarr:
         return Operator(graph=graph)
 
     def test_load_from_file_path(self, tmp_path, parent, ome_zarr_store_on_disc):
-        paths, expected_images, expected_multiscale, expected_additional_meta = ome_zarr_store_on_disc
+        paths, expected_images, expected_multiscale = ome_zarr_store_on_disc
         zarr_dir, path0, _ = paths
         # Request raw scale to test that the full path is used.
         # The loader implementation defaults to loading the lowest resolution (last scale).
@@ -411,14 +402,13 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
         numpy.testing.assert_array_equal(loaded_data, expected_images[0])
 
     def test_load_from_file_uri(self, tmp_path, parent, ome_zarr_store_on_disc):
-        paths, expected_images, expected_multiscale, expected_additional_meta = ome_zarr_store_on_disc
+        paths, expected_images, expected_multiscale = ome_zarr_store_on_disc
         zarr_dir, path0, _ = paths
         # Request raw scale to test that the full path is used.
         # The loader implementation defaults to loading the lowest resolution (last scale).
@@ -428,14 +418,13 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(str(zarr_dir))
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
         numpy.testing.assert_array_equal(loaded_data, expected_images[0])
 
     def test_load_from_file_path_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
-        paths, expected_images, expected_multiscale, expected_additional_meta = ome_zarr_store_on_disc
+        paths, expected_images, expected_multiscale = ome_zarr_store_on_disc
         zarr_subdir, path0, _ = paths
         zarr_dir = tmp_path / zarr_subdir
         reader = OpInputDataReader(parent=parent, ActiveScale=path0)
@@ -443,14 +432,13 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(zarr_dir)
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
         numpy.testing.assert_array_equal(loaded_data, expected_images[0])
 
     def test_load_from_file_uri_via_slot(self, tmp_path, parent, ome_zarr_store_on_disc):
-        paths, expected_images, expected_multiscale, expected_additional_meta = ome_zarr_store_on_disc
+        paths, expected_images, expected_multiscale = ome_zarr_store_on_disc
         zarr_subdir, path0, _ = paths
         zarr_dir = tmp_path / zarr_subdir
         reader = OpInputDataReader(parent=parent, ActiveScale=path0)
@@ -458,7 +446,6 @@ class TestOpInputDataReaderWithOMEZarr:
         reader.WorkingDirectory.setValue(zarr_dir)
 
         assert reader.Output.meta.scales == expected_multiscale
-        assert reader.Output.meta.ome_zarr_translations == expected_additional_meta
 
         loaded_data = reader.Output[:].wait()
 
