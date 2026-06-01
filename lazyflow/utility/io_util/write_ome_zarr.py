@@ -38,7 +38,6 @@ from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.clearscale import (
     Spacing,
     Shape,
@@ -149,17 +148,6 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
         za.attrs["drange"] = ilastik_meta["drange"]
 
 
-def _resolve_translations(export_axiskeys, export_offset, export_spacing, input_translations, input_scale_key):
-    export_translation = Translation.identity(export_axiskeys)
-    input_translation = Translation.identity(export_axiskeys)
-    if export_offset:
-        export_translation = export_offset.with_axes(export_axiskeys).to_physical(export_spacing)
-    if input_translations:
-        input_translation = input_translations.resolve_at_scale(input_scale_key, export_axiskeys)
-    sum_translation = export_translation + input_translation
-    return sum_translation
-
-
 def _get_scaling_method_metadata(export_blueprint: BlueprintShapes, interpolation_order: int) -> Optional[Dict]:
     if not export_blueprint.scaled_axes():
         return None
@@ -178,19 +166,21 @@ def _write_ome_zarr_and_ilastik_metadata(
     export_blueprint: BlueprintShapes,
     interpolation_order: int,
     export_offset: Optional[PixelOffset],
-    input_scale_key: Optional[str],
-    input_translations: Optional[OMEZarrTranslations],
+    input_scale: Optional[Scale],
     ilastik_meta: Dict,
 ):
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
     export_spacing = Spacing.from_vigra(ilastik_meta["axistags"])
+    axes = list(export_spacing.keys())
     if ilastik_meta["axis_units"]:
-        export_unit = Unit(ilastik_meta["axis_units"]).with_axes(export_spacing)
+        export_unit = Unit(ilastik_meta["axis_units"]).with_axes(axes)
     else:
-        export_unit = Unit.empty(export_spacing)
-    export_translation = _resolve_translations(
-        export_shape.keys(), export_offset, export_spacing, input_translations, input_scale_key
-    )
+        export_unit = Unit.empty(axes)
+
+    input_translation = input_scale.translation if input_scale else Translation.identity(axes)
+    export_translation = input_translation.with_axes(axes)
+    if export_offset:
+        export_translation += export_offset.with_axes(axes).to_physical(export_spacing)
 
     export_scale = Scale(export_shape, export_spacing, export_unit, export_translation)
     multiscale = export_blueprint.apply_to_scale(export_scale)
@@ -239,7 +229,8 @@ def write_ome_zarr(
         export_shape = Shape(reordered_source.meta.getTaggedShape())
         export_dtype = reordered_source.meta.dtype
         input_scale_key = reordered_source.meta.get("active_scale")
-        input_translations = reordered_source.meta.get("ome_zarr_translations")
+        input_multiscale = reordered_source.meta.get("scales")
+        input_scale = input_multiscale[input_scale_key] if input_multiscale and input_scale_key else None
         interpolation_order = OpResize.semantics_to_interpolation[
             reordered_source.meta.get("data_semantics", ImageTypes.Intensities)
         ]
@@ -311,8 +302,7 @@ def write_ome_zarr(
             export_blueprint,
             interpolation_order,
             export_offset,
-            input_scale_key,
-            input_translations,
+            input_scale,
             {
                 "axistags": reordered_source.meta.axistags,
                 "axis_units": reordered_source.meta.get("axis_units"),

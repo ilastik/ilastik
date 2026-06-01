@@ -9,7 +9,7 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
+from lazyflow.utility.io_util.clearscale import Multiscale, BlueprintShapes, Scale, Shape
 from lazyflow.utility.io_util.write_ome_zarr import (
     ShapesByScaleKey,
     write_ome_zarr,
@@ -143,17 +143,8 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     export_path = tmp_path / "test_multi_to_single.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    multiscale: ShapesByScaleKey = OrderedDict(
-        [
-            ("raw_scale", tagged_shape("tzyx", (2, 17, 17, 17))),
-            ("source_scale", tagged_shape("tzyx", (2, 9, 9, 9))),
-            ("downscale", tagged_shape("tzyx", (2, 5, 5, 5))),
-        ]
-    )
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source source_scale after a 4/4/4 offset
     export_offset = (0, 0, 4, 4, 4)
-    source_op.Output.meta.scales = multiscale
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
     resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
@@ -171,7 +162,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
             "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
         },  # offset * input scale + source scale translation
     ]
-    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.scales = Multiscale.from_ome_zarr(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -192,7 +183,8 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 {
                     "path": "source_scale",
                     "coordinateTransformations": [
-                        {"type": "scale", "scale": "should not be accessed"},
+                        # Bad metadata: Ensure it's not copied
+                        {"type": "scale", "scale": [2.4, 1.3, 3.7, 6.9]},
                         {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
                     ],
                 },
@@ -205,7 +197,11 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 },
             ],
         },
-        axes="tzyx",
+        get_shape=lambda path: {
+            "raw_scale": (2, 17, 17, 17),
+            "source_scale": (2, 9, 9, 9),
+            "downscale": (2, 5, 5, 5),
+        }[path],
     )
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
@@ -236,17 +232,16 @@ def test_resized_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
     progress = mock.Mock()
     input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
     # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    input_scales: ShapesByScaleKey = OrderedDict(
-        [
-            ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
-            ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
-        ]
+    input_scales = Multiscale.from_shapes(
+        BlueprintShapes(
+            [
+                ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
+                ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
+            ]
+        ),
+        Scale(shape=Shape(zip(input_axes, (2, 15, 15, 15)))),
     )
-    target_scales: ShapesByScaleKey = OrderedDict(
-        [
-            ("resized_scale", tagged_shape("tczyx", (2, 2, 10, 10, 10))),
-        ]
-    )
+    target_scales = BlueprintShapes({"resized_scale": tagged_shape("tczyx", (2, 2, 10, 10, 10))})
     source_op.Output.meta.scales = input_scales
     source_op.Output.meta.active_scale = "downscale"
     source_op.Output.meta.axistags.setResolution("t", 1.0)
@@ -278,7 +273,10 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"should be irrelevant": 1}})
+    source_op.Output.meta.scales = Multiscale.from_shapes(
+        BlueprintShapes({"source_scale": source_op.Output.meta.getTaggedShape()}),
+        Scale(shape=source_op.Output.meta.getTaggedShape()),
+    )
     source_op.Output.meta.active_scale = "source_scale"
     # Both Precomputed and OME-Zarr readers would read the pixel size of the source scale from the source metadata.
     # A hypothetical multiscale reader with no direct pixel size meta should still provide
@@ -333,7 +331,6 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"should be irrelevant": 1}})
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
     resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
@@ -343,7 +340,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.scales = Multiscale.from_ome_zarr(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -383,7 +380,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
                 },
             ],
         },
-        axes="tzyx",
+        get_shape=lambda path: (2, 5, 5, 5),
     )
     target_scales: ShapesByScaleKey = OrderedDict(
         [

@@ -18,13 +18,11 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from dataclasses import dataclass
 import json
 import logging
 import math
 import os
-from collections import OrderedDict
-from typing import Dict, List, Optional, Union, Literal, Tuple, Any, Sequence
+from typing import Dict, List, Optional, Union, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 import jsonschema
@@ -37,9 +35,8 @@ from zarr.errors import ArrayNotFoundError
 from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
-from lazyflow.base import Axiskey
 from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.clearscale import Translation, Multiscale
+from lazyflow.utility.io_util.clearscale import Multiscale
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
@@ -108,59 +105,6 @@ class NotAnOMEZarrMultiscale(ValueError):
 
 class ScaleNotFoundError(KeyError):
     pass
-
-
-@dataclass(frozen=True)
-class OMEZarrTranslations:
-    """
-    Used for porting translation metadata from an OME-Zarr input to export.
-    Consider renaming/generalising this if using slot.meta.ome_zarr_translations for other purposes.
-    """
-
-    multiscale_translation: Optional[OrderedDict[Literal["t", "c", "z", "y", "x"], float]]  # {axis: translation}
-    dataset_translations: OrderedDict[
-        str, Optional[OrderedDict[Literal["t", "c", "z", "y", "x"], float]]
-    ]  # { scale_key: {axis: translation} }
-
-    @classmethod
-    def from_multiscale_spec(
-        cls, multiscale_spec: OME_ZARR_MULTISCALE, axes: Sequence[Axiskey]
-    ) -> "OMEZarrTranslations":
-        def get_translation(
-            transforms: Union[None, List[Dict[str, Any]]],
-        ) -> Union[OrderedDict[Literal["t", "c", "z", "y", "x"], float], None]:
-            if not transforms or not isinstance(transforms, list) or len(transforms) != 2:
-                # Translation transform must be second transform if it exists, otherwise nonsense
-                return None
-            tl = transforms[1]
-            if "type" not in tl or tl["type"] != "translation" or "translation" not in tl or not tl["translation"]:
-                return None
-            tl_values = tl["translation"]
-            if any(not isinstance(value, float) for value in tl_values):
-                return None
-            return OrderedDict(zip(axes, tl_values))
-
-        multiscale_translation = get_translation(multiscale_spec.get("coordinateTransformations"))
-        dataset_translations = OrderedDict(
-            [
-                (scale["path"], get_translation(scale.get("coordinateTransformations", [])))
-                for scale in multiscale_spec["datasets"]
-            ]
-        )
-        return cls(
-            multiscale_translation=multiscale_translation,
-            dataset_translations=dataset_translations,
-        )
-
-    def resolve_at_scale(self, scale: str, axiskeys: Sequence[Axiskey]) -> Translation:
-        dataset = self.dataset_translations.get(scale)
-        if dataset is None and self.multiscale_translation is None:
-            return Translation.identity(axiskeys)
-        if dataset is None:
-            return Translation(self.multiscale_translation).with_axes(axiskeys)
-        if self.multiscale_translation is None:
-            return Translation(dataset).with_axes(axiskeys)
-        return (Translation(self.multiscale_translation) + Translation(dataset)).with_axes(axiskeys)
 
 
 def _get_multiscale_for_dataset(ome_spec: OME_ZARR_SPEC, dataset_subpath: str) -> OME_ZARR_MULTISCALE:
@@ -496,7 +440,6 @@ class OMEZarrStore(MultiscaleStore):
         multiscale = Multiscale.from_ome_zarr(self._multiscale_spec, get_shape=get_shape_keep_zarray)
         dtype = next(iter(self._scale_data.values()))["zarray"].dtype.type
         axistags = vigra.defaultAxistags("".join(multiscale.axes()))
-        self.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(self._multiscale_spec, multiscale.axes())
         super().__init__(
             uri=uri,
             dtype=dtype,
