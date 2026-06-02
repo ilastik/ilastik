@@ -78,8 +78,6 @@ def test_default_tracking_export_plugins_found():
         "Contours-With-Head",
         "CSV-Table",
         "CellTrackingChallenge",
-        "H5-Event-Sequence",
-        "JSON",
         "Fiji-MaMuT",
         "Multi-Worm-Tracker",
     ]

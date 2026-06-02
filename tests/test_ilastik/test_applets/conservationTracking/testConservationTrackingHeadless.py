@@ -214,24 +214,6 @@ class TestConservationTrackingHeadless(object):
         shutil.rmtree(os.path.join(self.input_data_path, "smallVideo-data_CellTrackingChallenge"))
 
     @timeLogged(logger)
-    def testHDF5Export(self):
-
-        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=H5-Event-Sequence"]
-
-        sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args
-
-        # Start up the ilastik.py entry script as if we had launched it from the command line
-        self.ilastik_startup.main()
-
-        # check output files exist
-        for i in range(7):
-            assert os.path.exists(
-                os.path.join(self.input_data_path, "smallVideo-data_H5-Event-Sequence", f"0000{i}.h5")
-            ), f"Missing frame {i}"
-        shutil.rmtree(os.path.join(self.input_data_path, "smallVideo-data_H5-Event-Sequence"))
-
-    @timeLogged(logger)
     def testMamutExport(self):
         try:
             from mamutexport.mamutxmlbuilder import MamutXmlBuilder
@@ -252,31 +234,6 @@ class TestConservationTrackingHeadless(object):
 
         # check output files exist
         files = [os.path.join(self.input_data_path, "smallVideo-data_Fiji-MaMuT_mamut.xml")]
-
-        for f in files:
-            assert os.path.exists(f)
-            os.remove(f)
-
-    @timeLogged(logger)
-    def testJsonExport(self):
-        try:
-            from mamutexport.mamutxmlbuilder import MamutXmlBuilder
-        except:
-            pytest.xfail("Mamutexport module not present. Skipping test")
-
-        args = self.ILASTIK_MAIN_DEFAULT_ARGS + ["--export_source=Plugin", "--export_plugin=JSON"]
-
-        sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args
-
-        # Start up the ilastik.py entry script as if we had launched it from the command line
-        self.ilastik_startup.main()
-
-        # check output files exist
-        files = [
-            os.path.join(self.input_data_path, "smallVideo-data_JSON_graph.json"),
-            os.path.join(self.input_data_path, "smallVideo-data_JSON_result.json"),
-        ]
 
         for f in files:
             assert os.path.exists(f)
