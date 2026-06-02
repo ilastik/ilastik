@@ -27,8 +27,8 @@ from lazyflow.operators.ioOperators import (
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
-from lazyflow.utility.io_util.clearscale import Multiscale, Scale, BlueprintShapes, Spacing, Unit
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, ShapesByScaleKey
+from lazyflow.utility.io_util.clearscale import Scale, BlueprintShapes, Spacing, Unit
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
@@ -837,7 +837,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     progress = mock.Mock()
     target_shape_up = OrderedDict(zip("tczyx", (6, 2, 16, 15, 13)))  # ome-zarr standard
     target_shape_down = OrderedDict(zip("tczyx", (6, 2, 3, 2, 3)))
-    target_scales: ShapesByScaleKey = OrderedDict([("upscale", target_shape_up), ("downscale", target_shape_down)])
+    target_scales = BlueprintShapes([("upscale", target_shape_up), ("downscale", target_shape_down)])
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None, target_scales)
 
@@ -847,13 +847,12 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     assert "axis_units" in reader.Output.meta
     assert reader.Output.meta.axis_units == dict(zip(axes, units))
     assert reader.Output.meta.getAxisKeys() == list("tczyx")
-    assert reader.Output.meta.scales == Multiscale.from_shapes(
-        BlueprintShapes(target_scales),
+    assert reader.Output.meta.scales == BlueprintShapes(target_scales).apply_to_scale(
         Scale(
             shape=op_data.Output.meta.getTaggedShape(),
             spacing=Spacing.from_vigra(op_data.Output.meta.axistags),
             unit=Unit(op_data.Output.meta.axis_units),
-        ).with_axes("tczyx"),
+        ).with_axes("tczyx")
     )
     for tag in reader.Output.meta.axistags:
         scaling = source_shape[tag.key] / target_shape_down[tag.key]

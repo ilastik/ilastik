@@ -22,7 +22,7 @@
 import logging
 from functools import partial
 from pathlib import Path
-from typing import List, Dict, OrderedDict, Optional, Union
+from typing import List, Dict, Optional, Union, Mapping
 
 import numpy
 import zarr
@@ -44,14 +44,12 @@ from lazyflow.utility.io_util.clearscale import (
     Translation,
     PixelOffset,
     BlueprintShapes,
-    BlueprintFactors,
     Scale,
     Unit,
+    Multiscale,
 )
 
 logger = logging.getLogger(__name__)
-
-ShapesByScaleKey = OrderedDict[str, TaggedShape]  # { scale_key: { axis: size } }
 
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
@@ -59,40 +57,35 @@ SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
 def match_target_scales_to_input_excluding_upscales(
-    export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
-) -> ShapesByScaleKey:
+    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
+) -> BlueprintShapes:
     """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
     # Since input_scales is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
-    assert input_key in all_matching_scales, "generated scales don't include source scale"
     return all_matching_scales.drop_before(input_key)
 
 
 def _match_target_scales_to_input(
-    export_shape: TaggedShape, input_scales: ShapesByScaleKey, input_key: str
+    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
 ) -> BlueprintShapes:
-    source_scale_shape = Shape(input_scales[input_key])
-    export_shape = Shape(export_shape)
-    if export_shape.matches(source_scale_shape, only=SPATIAL_AXES):
-        # Export shape is unmodified from its source scale -> output shapes = input shapes
-        export_shapes = BlueprintShapes(input_scales).with_axes(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
+    source_scale_shape = input_scales[input_key].shape
+    if source_scale_shape.matches(export_shape, only=SPATIAL_AXES):
+        # Unmodified source shape - reproduce exact multiscale shapes
+        shapes = BlueprintShapes.from_multiscale(input_scales)
     else:
-        # Export shape is modified (cropped) -> apply input scaling factors to export shape
+
         def two_spatials_or_is_input(scale: str, shape: Shape):
             remaining_spatial = len(shape.non_singleton_axes(SPATIAL_AXES))
             return remaining_spatial > 1 or scale == input_key
 
-        input_scalings = BlueprintFactors.from_shapes(input_scales, reference=source_scale_shape).with_identity("tc")
-        export_shapes = (
-            input_scalings.to_shapes(reference=export_shape, rounding="floor")
-            .with_axes(OME_ZARR_AXES)
-            .filter_items(two_spatials_or_is_input)
-        )
+        shapes = BlueprintShapes.from_multiscale_rescaled(
+            input_scales, target_shape=export_shape, source_key=input_key, scaled_axes=SPATIAL_AXES, rounding="floor"
+        ).filter_items(two_spatials_or_is_input)
 
-    return export_shapes
+    return shapes.with_axes(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
 
 
-def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> ShapesByScaleKey:
+def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> BlueprintShapes:
     """
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
@@ -100,7 +93,7 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> Shapes
     unscaled = Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
     chunk_shape = _get_chunk_shape(unscaled, dtype)
     shapes = BlueprintShapes.downscale_powers_of_2_xyz(base_shape=unscaled, shape_limit=chunk_shape, rounding="floor")
-    return shapes.to_dict()
+    return shapes
 
 
 def _get_chunk_shape(tagged_image_shape: Shape, dtype) -> Shape:
@@ -204,7 +197,7 @@ def write_ome_zarr(
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
     export_offset: Union[ShapeTuple, None],
-    target_scales: Optional[ShapesByScaleKey] = None,
+    target_scales: Optional[Mapping[str, Mapping[str, int]]] = None,
 ):
     pc = PathComponents(export_path)
     if pc.internalPath:
