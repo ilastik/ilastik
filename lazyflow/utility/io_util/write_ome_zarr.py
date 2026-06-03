@@ -39,7 +39,7 @@ from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
 from lazyflow.utility.io_util.clearscale import (
-    Spacing,
+    PixelSize,
     Shape,
     Translation,
     PixelOffset,
@@ -163,8 +163,8 @@ def _write_ome_zarr_and_ilastik_metadata(
     ilastik_meta: Dict,
 ):
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
-    export_spacing = Spacing.from_vigra(ilastik_meta["axistags"])
-    axes = list(export_spacing.keys())
+    export_pixel_size = PixelSize.from_vigra(ilastik_meta["axistags"])
+    axes = list(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
         export_unit = Unit(ilastik_meta["axis_units"]).with_axes(axes)
     else:
@@ -173,9 +173,9 @@ def _write_ome_zarr_and_ilastik_metadata(
     input_translation = input_scale.translation if input_scale else Translation.identity(axes)
     export_translation = input_translation.with_axes(axes)
     if export_offset:
-        export_translation += export_offset.with_axes(axes).to_physical(export_spacing)
+        export_translation += export_offset.with_axes(axes).to_physical(export_pixel_size)
 
-    export_scale = Scale(export_shape, export_spacing, export_unit, export_translation)
+    export_scale = Scale(export_shape, export_pixel_size, export_unit, export_translation)
     multiscale = export_blueprint.apply_to_scale(export_scale)
     ome_zarr_multiscale_meta = multiscale.to_ome_zarr(version="0.4", axis_types="infer")
 
