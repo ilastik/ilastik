@@ -29,6 +29,7 @@ from qtpy.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QGridLayout,
     QLabel,
     QPushButton,
@@ -43,6 +44,7 @@ from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore
 from lazyflow.utility.pathHelpers import uri_to_Path
+from volumina.utility import preferences
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +100,8 @@ class CheckRemoteStoreWorker(QThread):
 class MultiscaleDatasetBrowser(QDialog):
 
     EXAMPLE_URI = "https://data.ilastik.org/2d_cells_apoptotic_1channel.zarr"
+    PREFERENCES_GROUP = "DataSelection"
+    PREFERENCES_SETTING = "recent multiscale dir"
 
     def __init__(self, history=None, parent=None):
         super().__init__(parent)
@@ -135,13 +139,18 @@ class MultiscaleDatasetBrowser(QDialog):
         self.example_button.pressed.connect(lambda: self.combo.lineEdit().setText(self.EXAMPLE_URI))
 
         combo_layout = QGridLayout()
+        self.browse_button = QPushButton(self)
+        self.browse_button.setText("Browse...")
+        self.browse_button.setToolTip("Choose an OME-Zarr dataset folder from disk.")
+        self.browse_button.clicked.connect(self._browse_for_directory)
         self.check_button = QPushButton(self)
         self.check_button.setText("Check")
         self.check_button.clicked.connect(self._validate_text_input)
         self.combo.lineEdit().returnPressed.connect(self.check_button.click)
         combo_layout.addWidget(combo_label, 0, 0)
         combo_layout.addWidget(self.combo, 0, 1)
-        combo_layout.addWidget(self.check_button, 0, 2)
+        combo_layout.addWidget(self.browse_button, 0, 2)
+        combo_layout.addWidget(self.check_button, 0, 3)
         combo_layout.addWidget(self.example_button, 1, 0)
 
         main_layout.addLayout(combo_layout)
@@ -170,6 +179,45 @@ class MultiscaleDatasetBrowser(QDialog):
         self.combo.lineEdit().textChanged.connect(update_ok_button)
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
+
+    def _starting_directory_for_folder_picker(self) -> str:
+        text = self.combo.currentText().strip()
+        pref_path = pathlib.Path(preferences.get(self.PREFERENCES_GROUP, self.PREFERENCES_SETTING, pathlib.Path.home()))
+        default_dir = pref_path if pref_path.is_dir() else pref_path.parent
+
+        if not text:
+            return str(default_dir)
+
+        try:
+            return str(uri_to_Path(text))  # Valid file URI?
+        except ValueError:
+            pass
+
+        if isUrl(text):
+            return str(default_dir)
+
+        path = pathlib.Path(text).expanduser()
+        if path.exists():
+            return str(path if path.is_dir() else path.parent)
+        if path.parent.exists():
+            return str(path.parent)
+
+        return str(default_dir)
+
+    def _browse_for_directory(self):
+        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select OME-Zarr Dataset Folder",
+            self._starting_directory_for_folder_picker(),
+            options=options,
+        )
+        if not directory:
+            return
+
+        preferences.set(self.PREFERENCES_GROUP, self.PREFERENCES_SETTING, pathlib.Path(directory).as_posix())
+        self.combo.lineEdit().setText(directory)
+        self.check_button.click()
 
     def _validate_text_input(self, _event):
         self._set_inputs_enabled(False)
@@ -211,6 +259,7 @@ class MultiscaleDatasetBrowser(QDialog):
 
     def _set_inputs_enabled(self, enabled):
         self.example_button.setEnabled(enabled)
+        self.browse_button.setEnabled(enabled)
         self.check_button.setEnabled(enabled)
         self.combo.setEnabled(enabled)
 
