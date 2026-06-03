@@ -75,6 +75,8 @@ outputs:
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py
         - zarr 2.*
+        # Third-party object feature plugins
+        - sphericaltexture_plugin 0.1.0
       run_constrained:
         - tiktorch 26.5.0
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
@@ -131,8 +133,6 @@ outputs:
         - tiktorch
         - torchvision
         - volumina
-        # Third-party object feature plugins
-        - sphericaltexture_plugin 0.1.0
 
     test:
       source_files:
