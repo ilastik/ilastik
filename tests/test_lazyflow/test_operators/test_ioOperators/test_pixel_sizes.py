@@ -27,7 +27,7 @@ from lazyflow.operators.ioOperators import (
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
-from lazyflow.utility.io_util.clearscale import Scale, BlueprintShapes, Spacing, Unit
+from lazyflow.utility.io_util.clearscale import Scale, BlueprintShapes, PixelSize, Unit
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
@@ -850,7 +850,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     assert reader.Output.meta.scales == BlueprintShapes(target_scales).apply_to_scale(
         Scale(
             shape=op_data.Output.meta.getTaggedShape(),
-            spacing=Spacing.from_vigra(op_data.Output.meta.axistags),
+            pixel_size=PixelSize.from_vigra(op_data.Output.meta.axistags),
             unit=Unit(op_data.Output.meta.axis_units),
         ).with_axes("tczyx")
     )
