@@ -18,6 +18,21 @@ def get_dlg(qtbot):
     return dlg
 
 
+def test_combo_default_width_does_not_follow_long_history(qtbot, monkeypatch):
+    monkeypatch.setattr(multiscaleDatasetBrowser, "line_height", lambda: 11)
+    long_uri = "https://example.com/" + "long/" * 200 + "data.zarr"
+
+    dlg = multiscaleDatasetBrowser.MultiscaleDatasetBrowser(history=[long_uri])
+    qtbot.addWidget(dlg)
+    dlg.show()
+    qtbot.waitExposed(dlg)
+
+    assert dlg.combo.sizeHint().width() == 24 * 11
+    assert dlg.combo.sizePolicy().horizontalPolicy() == multiscaleDatasetBrowser.QSizePolicy.Expanding
+    assert dlg.sizeHint().width() < 1000
+    assert dlg.width() < 1000
+
+
 @pytest.mark.parametrize(
     "text_input,expected",
     [

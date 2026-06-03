@@ -39,6 +39,7 @@ from qtpy.QtWidgets import (
 )
 from requests.exceptions import SSLError, ConnectionError as RequestsConnectionError
 
+from ilastik.utility.gui import line_height
 from lazyflow.utility import isUrl
 from lazyflow.utility.io_util.OMEZarrStore import OMEZarrStore
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
@@ -47,6 +48,20 @@ from lazyflow.utility.pathHelpers import uri_to_Path
 from volumina.utility import preferences
 
 logger = logging.getLogger(__name__)
+
+
+class DefaultWidthComboBox(QComboBox):
+    DEFAULT_WIDTH = 24
+
+    def sizeHint(self):
+        size = super().sizeHint()
+        size.setWidth(self.DEFAULT_WIDTH * line_height())
+        return size
+
+    def minimumSizeHint(self):
+        size = super().minimumSizeHint()
+        size.setWidth(0)
+        return size
 
 
 def _validate_uri(text: str) -> str:
@@ -112,7 +127,7 @@ class MultiscaleDatasetBrowser(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        self.setMinimumSize(800, 200)
+        self.setMinimumSize(30 * line_height(), 16 * line_height())
         self.setWindowTitle("Select Multiscale Source")
         main_layout = QVBoxLayout()
 
@@ -120,9 +135,9 @@ class MultiscaleDatasetBrowser(QDialog):
         description.setText('Enter path or URL and click "Check".')
         main_layout.addWidget(description)
 
-        self.combo = QComboBox(self)
+        self.combo = DefaultWidthComboBox(self)
         self.combo.setEditable(True)
-        self.combo.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        self.combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         for item in self._history:
             self.combo.addItem(item, item)
@@ -152,6 +167,7 @@ class MultiscaleDatasetBrowser(QDialog):
         combo_layout.addWidget(self.browse_button, 0, 2)
         combo_layout.addWidget(self.check_button, 0, 3)
         combo_layout.addWidget(self.example_button, 1, 0)
+        combo_layout.setColumnStretch(1, 1)
 
         main_layout.addLayout(combo_layout)
 
