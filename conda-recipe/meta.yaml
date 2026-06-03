@@ -43,7 +43,7 @@ outputs:
         - greenlet
         - grpcio !=1.42.*
         - h5py
-        - hytra >=1.1.5
+        - hytra >=1.2.0
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
         - ilastiktools
@@ -61,7 +61,8 @@ outputs:
         # pyqtgraph 0.14.0 results in non-functional 3dvp on win, no mesh display on mac
         - pyqtgraph <0.14
         # previous versions would set thread limits globally with side effects
-        - python-elf >=0.4.8
+        # 0.9 breaks compatibility and results in test failures
+        - python-elf >=0.4.8,<0.9
         # for neuroglancer precomputed chunks
         - requests
         # s3fs allows zarr.storage.FSStore to read s3:// URIs
@@ -72,6 +73,7 @@ outputs:
         - tifffile >=2022
         - vigra 1.12.2
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
+        - yapsy
         - z5py
         - zarr 2.*
       run_constrained:

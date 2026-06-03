@@ -15,8 +15,6 @@ from lazyflow.stype import Opaque
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import (
     default_features_key,
-    OpRegionFeatures,
-    OpAdaptTimeListRoi,
 )
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
@@ -28,18 +26,14 @@ from lazyflow.request import Request, RequestPool
 
 from hytra.core.jsongraph import (
     getMappingsBetweenUUIDsAndTraxels,
-    getMergersDetectionsLinksDivisions,
-    getMergersPerTimestep,
-    getLinksPerTimestep,
-    getDetectionsPerTimestep,
-    getDivisionsPerTimestep,
 )
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.gmm_merger_resolver import GMMMergerResolver
+
 from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
@@ -129,10 +123,7 @@ class OpConservationTracking(Operator):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
 
-        # Merger resolver plugin manager (contains GMM fit routine)
-        self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), "plugins")]
-        pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = pluginManager.getMergerResolver()
+        self.gmmMergerResolver = GMMMergerResolver()
 
         self.result = None
 
@@ -335,7 +326,7 @@ class OpConservationTracking(Operator):
         # supply random_state for reproducible merger resolving
         # random_state will be used in gmm-based merger resolving
         mergerResolver = IlastikMergerResolver(
-            originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph, random_state=randomSeedMerger
+            originalGraph, withFullGraph=withFullGraph, random_state=randomSeedMerger
         )
 
         # Check if graph contains mergers, otherwise skip merger resolving
@@ -622,7 +613,7 @@ class OpConservationTracking(Operator):
             if idx in resolvedMergersDict[time]:
                 fits = resolvedMergersDict[time][idx]["fits"]
                 newIds = resolvedMergersDict[time][idx]["newIds"]
-                self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds, offset=offset)
+                self.gmmMergerResolver.updateLabelImage(volume, idx, fits, newIds, offset=offset)
 
         return volume
 

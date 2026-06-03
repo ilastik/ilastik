@@ -20,14 +20,11 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialPickleableSlot
 
-import hytra
-
 
 class TrackingSerializer(AppletSerializer):
     VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
 
     def __init__(self, mainOperator, projectFileGroupName):
-        # Serialization for the new pipeline (HyTra)
         slots = [
             SerialDictSlot(mainOperator.Parameters, selfdepends=True),
             SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
