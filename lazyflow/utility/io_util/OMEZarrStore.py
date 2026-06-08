@@ -22,10 +22,9 @@ import json
 import logging
 import math
 import os
-from typing import Dict, List, Optional, Union, Literal, Tuple, Any
+from typing import Dict, List, Optional, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
-import jsonschema
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
@@ -37,62 +36,17 @@ from zarr.storage import FSStore, LRUStoreCache
 from lazyflow import rtype
 from lazyflow.utility import Timer, Memory
 from lazyflow.utility.io_util.clearscale import Multiscale
+from lazyflow.utility.io_util.clearscale.ome_zarr import make_fake_shapes
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)
 
 ZARR_EXT = ".zarr"
 
-OME_ZARR_DATASET = Dict[Literal["path", "coordinateTransformations"], Any]  # single dataset (= scale)
-OME_ZARR_MULTISCALE = Dict[  # single multiscales entry of a json-validated OME-Zarr zattrs (any version)
-    # The spec allows for multiple multiscales, but in practice we only ever see one.
-    Literal["axes", "datasets", "version", "coordinateTransformations", "name"],
-    Union[List[Dict], List[OME_ZARR_DATASET], str],
-]
-OME_ZARR_SPEC = Dict[Literal["multiscales"], List[OME_ZARR_MULTISCALE]]  # json-validated OME-Zarr zattrs (any version)
-MULTISCALE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "multiscales": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "axes": {
-                        "type": "array",
-                        "minItems": 2,
-                        "maxItems": 5,
-                        "items": {
-                            "oneOf": [
-                                {"type": "string"},
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {"type": "string"},
-                                    },
-                                    "required": ["name"],
-                                },
-                            ]
-                        },
-                    },
-                    "datasets": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                            "type": "object",
-                            "properties": {"path": {"type": "string"}},
-                            "required": ["path"],
-                        },
-                    },
-                    "version": {"type": "string"},
-                },
-                "required": ["datasets", "version"],
-            },
-        },
-    },
-    "required": ["multiscales"],
-}
+OME_ZARR_MULTISCALE = Dict[Literal["axes", "datasets", "version", "coordinateTransformations"], Any]
+"""Single entry in OME-Zarr attrs['multiscales'] list.
+The spec allowed multiple entries, but in practice there is only ever one."""
+OME_ZARR_SPEC = Dict[Literal["multiscales"], List[OME_ZARR_MULTISCALE]]
 
 
 class NoOMEZarrMetaFound(ValueError):
@@ -321,19 +275,17 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     # Found .zattrs, but what kind of .zattrs?
     _check_non_multiscale_specs(spec, uri, sort_uri)
 
-    try:
-        jsonschema.validate(spec, MULTISCALE_SCHEMA)
-    except jsonschema.ValidationError as e:
-        err_msg = (
-            "Metadata for this store did not match OME-Zarr spec, "
-            "or reports no multiscale datasets. Details below."
-            f"\nMetadata read from {uri}/.zattrs."
-            f"\n\nProblematic metadata entry: {e.json_path}"
-            f"\nProblem: {e.message}"
-            f"\nRequired properties: {e.schema}"
-            f"\nFull metadata received:\n{spec}"
-        )
-        raise NoOMEZarrMetaFound(err_msg)
+    if "multiscales" not in spec or not spec["multiscales"]:
+        raise NoOMEZarrMetaFound(f"No 'multiscales' metadata found in: {spec!r}")
+
+    valid_ms = []
+    for ms_dict in spec["multiscales"]:
+        try:
+            valid_ms.append(Multiscale.from_ome_zarr(ms_dict, get_shape=make_fake_shapes(ms_dict)))
+        except ValueError:
+            continue
+    if not valid_ms:
+        raise NoOMEZarrMetaFound(f"No valid multiscale entry found in: {spec['multiscales']!r}")
     return spec
 
 
