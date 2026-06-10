@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import List, Union, Iterable
 from unittest import mock
 
+from clearscale import Multiscale, BlueprintShapes
 import numpy
 import pytest
 import vigra
@@ -9,7 +10,6 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.clearscale import Multiscale, BlueprintShapes
 from lazyflow.utility.io_util.write_ome_zarr import (
     write_ome_zarr,
     generate_default_target_scales,
