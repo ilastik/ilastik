@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple, Union
 from unittest import mock
 from unittest.mock import ANY
 
+from clearscale import Scale, BlueprintShapes, PixelSize, Unit
 import h5py
 import numpy as np
 import pytest
@@ -27,7 +28,6 @@ from lazyflow.operators.ioOperators import (
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
-from lazyflow.utility.io_util.clearscale import Scale, BlueprintShapes, PixelSize, Unit
 from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 

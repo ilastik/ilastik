@@ -32,10 +32,10 @@ import h5py
 import pytest
 import zarr
 
+from clearscale import Multiscale
 from typing import Tuple, List
 from PIL import Image
 
-from lazyflow.utility.io_util.clearscale import Multiscale
 from lazyflow.utility.io_util.OMEZarrStore import NotAnOMEZarrMultiscale
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 
