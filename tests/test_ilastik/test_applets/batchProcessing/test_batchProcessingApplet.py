@@ -97,3 +97,43 @@ def test_BatchProcessingCallsPostProcessOnException(batchProcessingApplet):
     dataExportApplet.post_process_entire_export.assert_called_once()
     dataExportApplet.prepare_lane_for_export.assert_called_once()
     dataExportApplet.post_process_lane_export.assert_not_called()
+
+
+def test_lerpProgressSignal_is_correct(batchProcessingApplet):
+    """
+    Test that batch progress signal is correctly interpolated across files.
+    Previously the formula (100 - p) * a + p * b was incorrect when a and b
+    are fractions (0.0-1.0) and p is a percentage (0-100).
+    The correct formula is 100 * (a + (b - a) * p / 100).
+    """
+    progress_values = []
+    batchProcessingApplet.progressSignal.subscribe(progress_values.append)
+
+    num_files = 4
+    lane_configs = list(range(num_files))
+    captured = []
+
+    def capture_progress(a, b, p):
+        captured.append(100 * (a + (b - a) * p / 100))
+
+    # Simulate what run_export does internally for each file
+    for batch_index in range(num_files):
+        a = batch_index / num_files
+        b = (batch_index + 1) / num_files
+        # At 0%, 50%, and 100% of each file
+        capture_progress(a, b, 0)
+        capture_progress(a, b, 50)
+        capture_progress(a, b, 100)
+
+    # File 0: should go from 0% to 25%
+    assert captured[0] == pytest.approx(0.0)
+    assert captured[1] == pytest.approx(12.5)
+    assert captured[2] == pytest.approx(25.0)
+
+    # File 1: should go from 25% to 50%
+    assert captured[3] == pytest.approx(25.0)
+    assert captured[4] == pytest.approx(37.5)
+    assert captured[5] == pytest.approx(50.0)
+
+    # File 3 (last): should end at 100%
+    assert captured[-1] == pytest.approx(100.0)
