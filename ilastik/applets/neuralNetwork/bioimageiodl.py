@@ -97,7 +97,7 @@ class BioImageDownloader(QThread):
                     download(
                         v,
                         progressbar=TqdmExt(
-                            total=1,  # hack: it will be set later by HTTPDownloader, but it is needed for a valid tqdm
+                            total=0,  # unknown until HTTP response headers arrive; set later by the downloader
                             callback=_callback(self.progress1),
                             cancellation_token=self._cancellation_token,
                         ),
