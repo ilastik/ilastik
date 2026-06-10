@@ -25,6 +25,8 @@ import os
 from typing import Dict, List, Optional, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
+from clearscale import Multiscale
+from clearscale.ome_zarr import make_fake_shapes
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
@@ -35,8 +37,6 @@ from zarr.storage import FSStore, LRUStoreCache
 
 from lazyflow import rtype
 from lazyflow.utility import Timer, Memory
-from lazyflow.utility.io_util.clearscale import Multiscale
-from lazyflow.utility.io_util.clearscale.ome_zarr import make_fake_shapes
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__name__)

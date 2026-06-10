@@ -23,11 +23,11 @@ from collections import OrderedDict
 from functools import reduce
 from typing import List, Set
 
+from clearscale import Scale, Multiscale, Shape as ClearscaleShape
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod, eq_shapes
-from lazyflow.utility.io_util.clearscale import Scale, Multiscale, Shape as ClearscaleShape
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 

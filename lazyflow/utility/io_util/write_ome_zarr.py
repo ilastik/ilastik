@@ -24,6 +24,16 @@ from functools import partial
 from pathlib import Path
 from typing import List, Dict, Optional, Union, Mapping
 
+from clearscale import (
+    PixelSize,
+    Shape,
+    Translation,
+    PixelOffset,
+    BlueprintShapes,
+    Scale,
+    Unit,
+    Multiscale,
+)
 import numpy
 import zarr
 from zarr.storage import FSStore
@@ -38,16 +48,6 @@ from lazyflow.roi import determineBlockShape, roiFromShape, roiToSlice
 from lazyflow.slot import Slot
 from lazyflow.utility import OrderedSignal, PathComponents, BigRequestStreamer
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.clearscale import (
-    PixelSize,
-    Shape,
-    Translation,
-    PixelOffset,
-    BlueprintShapes,
-    Scale,
-    Unit,
-    Multiscale,
-)
 
 logger = logging.getLogger(__name__)
 
