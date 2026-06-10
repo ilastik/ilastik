@@ -40,3 +40,30 @@ def test_runtime_cfg_skip_pixel_size_check_default_is_false():
     """By default pixel size check should NOT be skipped."""
     cfg = RuntimeCfg()
     assert cfg.skip_pixel_size_check is False
+
+
+def test_skip_pixel_size_check_prevents_lane_inspection():
+    """
+    When runtime_cfg.skip_pixel_size_check is True, _check_pixel_size_mismatch
+    should return immediately without inspecting any lanes.
+    """
+    from unittest.mock import MagicMock, patch
+    from ilastik.config import runtime_cfg
+    from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
+
+    # Patch runtime_cfg.skip_pixel_size_check to True
+    original = runtime_cfg.skip_pixel_size_check
+    try:
+        runtime_cfg.skip_pixel_size_check = True
+
+        # Create a minimal mock of DataSelectionGui
+        gui = MagicMock(spec=DataSelectionGui)
+        gui.topLevelOperator = MagicMock()
+
+        # Call the real method on the mock instance
+        DataSelectionGui._check_pixel_size_mismatch(gui, 0, 3)
+
+        # If skip is True, getLane should never be called
+        gui.topLevelOperator.getLane.assert_not_called()
+    finally:
+        runtime_cfg.skip_pixel_size_check = original
