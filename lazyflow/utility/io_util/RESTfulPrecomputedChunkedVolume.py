@@ -22,12 +22,12 @@
 import json
 import logging
 
+from clearscale import Multiscale
 import jsonschema
 import numpy
 import requests
 import vigra
 
-from lazyflow.utility.io_util.clearscale import Multiscale
 from lazyflow.utility.io_util.multiscaleStore import MultiscaleStore, DEFAULT_SCALE_KEY
 
 logger = logging.getLogger(__file__)

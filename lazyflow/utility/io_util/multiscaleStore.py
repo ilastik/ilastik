@@ -21,11 +21,11 @@
 from abc import ABCMeta, abstractmethod
 from typing import Tuple
 
+from clearscale import Multiscale
 import numpy
 import vigra
 
 from lazyflow.slot import OutputSlot
-from lazyflow.utility.io_util.clearscale import Multiscale
 
 DEFAULT_SCALE_KEY = ""
 

@@ -26,6 +26,7 @@ from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
+from clearscale import Multiscale
 import numpy
 import requests
 import vigra
@@ -34,7 +35,6 @@ from pathlib import Path
 import zarr
 from PIL import Image
 
-from lazyflow.utility.io_util.clearscale import Multiscale
 from lazyflow.utility.io_util.write_ome_zarr import OME_ZARR_V_0_4_KWARGS
 from lazyflow.utility.io_util.OMEZarrStore import ScaleNotFoundError
 from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
