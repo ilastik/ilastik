@@ -36,6 +36,7 @@ from volumina.utility import preferences
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind, log_exception
+from ilastik.config import runtime_cfg
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.widgets.ImageFileDialog import ImageFileDialog
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, SubvolumeSelectionDlg
@@ -520,6 +521,8 @@ class DataSelectionGui(QWidget):
             self.parentApplet.appletStateUpdateRequested()
 
     def _check_pixel_size_mismatch(self, first_lane, last_lane):
+        if runtime_cfg.skip_pixel_size_check:
+            return
         mismatches = []
         for lane_index in range(first_lane, last_lane + 1):
             lane_op = self.topLevelOperator.getLane(lane_index)
@@ -728,6 +731,7 @@ class DataSelectionGui(QWidget):
         editorDlg = DatasetInfoEditorWidget(self, infos, self.serializer)
         if editorDlg.exec_() == QDialog.Accepted:
             self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
+            self._check_pixel_size_mismatch(min(laneIndexes), max(laneIndexes))
 
     def addMultiscaleDataset(self, roleIndex, laneIndex):
         PREFERENCES_GROUP = "DataSelection"
