@@ -115,3 +115,27 @@ def test_progress_callback_math(n, total, expected):
         assert emitted == [], f"Should not emit when total=0, got {emitted}"
     else:
         assert emitted == [expected], f"Expected [{expected}], got {emitted}"
+
+
+def test_bioimagedownloader_uses_total_zero_for_per_file_progress():
+    """
+    BioImageDownloader.run() must initialize TqdmExt with total=0 for
+    per-file download progress, NOT total=1 (the old placeholder hack).
+
+    With total=1, chunk updates (e.g. n=4096 bytes) cause the callback
+    to compute n/total*100 = 409600%, making the progress bar exceed 100%.
+
+    This test inspects the source of BioImageDownloader.run() to verify
+    total=0 is used, since the actual download requires network access.
+    """
+    import inspect
+
+    source = inspect.getsource(bioimageiodl.BioImageDownloader.run)
+    assert "total=0" in source, (
+        "BioImageDownloader.run() must use total=0 when initializing TqdmExt "
+        "for per-file progress. Using total=1 causes progress values over 100%."
+    )
+    assert "total=1" not in source, (
+        "BioImageDownloader.run() must NOT use total=1 as a placeholder — "
+        "this causes n/total*100 to exceed 100% on first chunk updates."
+    )
