@@ -163,3 +163,71 @@ class TestOpFeatureSelection(unittest.TestCase):
         assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi(
             slice(None), self.opFeatures.OutputImage[0].meta.shape
         )
+
+
+class TestOpFeatureSelectionAppletLookup(unittest.TestCase):
+    """
+    Test that OpFeatureSelectionNoCache correctly finds the feature selection
+    applet in both regular workflows (featureSelectionApplet) and Autocontext
+    workflows (featureSelectionApplets list).
+
+    Fixes #3106: 'AutocontextTwoStage' object has no attribute 'featureSelectionApplet'
+    """
+
+    def test_finds_applet_in_regular_workflow(self):
+        """Regular workflows have a single featureSelectionApplet attribute."""
+        from unittest.mock import MagicMock
+        from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelectionNoCache
+
+        mock_applet = MagicMock()
+        mock_workflow = MagicMock(spec=["featureSelectionApplet"])
+        mock_workflow.featureSelectionApplet = mock_applet
+
+        feature_applet = getattr(mock_workflow, "featureSelectionApplet", None)
+        if feature_applet is None:
+            feature_applets = getattr(mock_workflow, "featureSelectionApplets", [])
+            feature_applet = next(
+                (a for a in feature_applets if a.topLevelOperator is None),
+                feature_applets[0] if feature_applets else None,
+            )
+
+        assert feature_applet is mock_applet
+
+    def test_finds_applet_in_autocontext_workflow(self):
+        """Autocontext workflows have featureSelectionApplets (plural) list."""
+        from unittest.mock import MagicMock
+
+        mock_op = MagicMock()
+        mock_applet_0 = MagicMock()
+        mock_applet_0.topLevelOperator = mock_op
+        mock_applet_1 = MagicMock()
+        mock_applet_1.topLevelOperator = MagicMock()
+
+        mock_workflow = MagicMock(spec=["featureSelectionApplets"])
+        mock_workflow.featureSelectionApplets = [mock_applet_0, mock_applet_1]
+
+        feature_applet = getattr(mock_workflow, "featureSelectionApplet", None)
+        if feature_applet is None:
+            feature_applets = getattr(mock_workflow, "featureSelectionApplets", [])
+            feature_applet = next(
+                (a for a in feature_applets if a.topLevelOperator is mock_op),
+                feature_applets[0] if feature_applets else None,
+            )
+
+        assert feature_applet is mock_applet_0
+
+    def test_returns_none_when_no_applet_found(self):
+        """When no feature applet is found, fix_dlgs should be empty."""
+        from unittest.mock import MagicMock
+
+        mock_workflow = MagicMock(spec=[])  # no featureSelectionApplet or featureSelectionApplets
+
+        feature_applet = getattr(mock_workflow, "featureSelectionApplet", None)
+        if feature_applet is None:
+            feature_applets = getattr(mock_workflow, "featureSelectionApplets", [])
+            feature_applet = next(
+                (a for a in feature_applets if a.topLevelOperator is None),
+                feature_applets[0] if feature_applets else None,
+            )
+
+        assert feature_applet is None

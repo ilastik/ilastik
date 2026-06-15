@@ -167,15 +167,22 @@ class OpFeatureSelectionNoCache(Operator):
             if invalid_scales or invalid_z_scales:
                 invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
 
-                if self.parent.parent.featureSelectionApplet._gui is None:
-                    # headless
+                # Find the feature selection applet for this operator.
+                # Regular workflows have a single `featureSelectionApplet`,
+                # while Autocontext has `featureSelectionApplets` (a list).
+                workflow = self.parent.parent
+                feature_applet = getattr(workflow, "featureSelectionApplet", None)
+                if feature_applet is None:
+                    feature_applets = getattr(workflow, "featureSelectionApplets", [])
+                    feature_applet = next(
+                        (a for a in feature_applets if a.topLevelOperator is self.parent),
+                        feature_applets[0] if feature_applets else None,
+                    )
+                if feature_applet is None or feature_applet._gui is None:
+                    # headless or no applet found
                     fix_dlgs = []
                 else:
-                    fix_dlgs = [
-                        self.parent.parent.featureSelectionApplet._gui.currentGui(
-                            fallback_on_lane_0=True
-                        ).onFeatureButtonClicked
-                    ]
+                    fix_dlgs = [feature_applet._gui.currentGui(fallback_on_lane_0=True).onFeatureButtonClicked]
 
                 raise FeatureSelectionConstraintError(
                     "Feature Selection",
