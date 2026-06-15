@@ -24,7 +24,13 @@ import numpy
 from lazyflow.roi import sliceToRoi
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.ioOperators import OpInputDataReader
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.featureSelection.opFeatureSelection import (
+    OpFeatureSelection,
+    OpFeatureSelectionNoCache,
+    FeatureSelectionConstraintError,
+)
+from unittest.mock import MagicMock, patch, PropertyMock
+import pytest
 import vigra
 
 import ilastik.ilastik_logging
@@ -163,3 +169,116 @@ class TestOpFeatureSelection(unittest.TestCase):
         assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi(
             slice(None), self.opFeatures.OutputImage[0].meta.shape
         )
+
+
+class TestOpFeatureSelectionAppletLookup:
+    """
+    Tests that OpFeatureSelectionNoCache.setupOutputs() correctly finds the
+    feature selection applet in both regular and Autocontext workflows by
+    actually calling into the production code in opFeatureSelection.py.
+
+    Fixes #3106: 'AutocontextTwoStage' object has no attribute 'featureSelectionApplet'
+    """
+
+    @pytest.fixture
+    def invalid_selection(self) -> numpy.ndarray:
+        test_selections = numpy.zeros((6, 7), dtype=bool)
+        test_selections[:, 6] = True  # sigma=10.0, invalid for 5x5 image
+        return test_selections
+
+    @pytest.fixture
+    def mock_workflow(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def op_with_invalid_scales(self, graph: Graph, mock_workflow: MagicMock) -> OpFeatureSelectionNoCache:
+        """
+        Create a real OpFeatureSelectionNoCache whose parent.parent resolves
+        to mock_workflow, configured so setupOutputs() hits the invalid-scales
+        branch and exercises the applet-lookup code in production.
+
+        We patch the operator's parent property because lazyflow calls
+        setupOutputs() immediately on setValue() and the parent chain must
+        be in place by then. The patch.object context manager handles cleanup.
+        """
+        inner_mock = MagicMock()
+        inner_mock.parent = mock_workflow
+
+        with patch.object(
+            OpFeatureSelectionNoCache,
+            "parent",
+            new_callable=PropertyMock,
+        ) as mock_parent:
+            mock_parent.return_value = inner_mock
+            op = OpFeatureSelectionNoCache(graph=graph)
+
+            # Tiny image: too small for large sigma scales -> triggers invalid_scales path
+            tiny = numpy.zeros((1, 5, 5, 1, 1), dtype=numpy.float32)
+            tiny = vigra.taggedView(tiny, "txyzc")
+            op.InputImage.setValue(tiny)
+            yield op
+
+    def test_regular_workflow_uses_singular_applet(
+        self,
+        mock_workflow: MagicMock,
+        op_with_invalid_scales: OpFeatureSelectionNoCache,
+        invalid_selection: numpy.ndarray,
+    ):
+        """
+        In a regular workflow, setupOutputs() finds featureSelectionApplet
+        (singular) and includes its callback in fixing_dialogs.
+        """
+        mock_callback = MagicMock()
+        mock_applet = MagicMock()
+        mock_applet._gui.currentGui.return_value.onFeatureButtonClicked = mock_callback
+        mock_workflow.featureSelectionApplet = mock_applet
+
+        with pytest.raises(FeatureSelectionConstraintError) as ex:
+            op_with_invalid_scales.SelectionMatrix.setValue(invalid_selection)
+
+        assert mock_callback in ex.value.fixing_dialogs
+
+    def test_autocontext_workflow_uses_plural_applets(
+        self,
+        mock_workflow: MagicMock,
+        op_with_invalid_scales: OpFeatureSelectionNoCache,
+        invalid_selection: numpy.ndarray,
+    ):
+        """
+        In an Autocontext workflow, setupOutputs() falls back to
+        featureSelectionApplets (plural) and picks the applet whose
+        topLevelOperator matches self.parent.
+        """
+        mock_callback_0 = MagicMock()
+        mock_applet_0 = MagicMock()
+        mock_applet_0._gui.currentGui.return_value.onFeatureButtonClicked = mock_callback_0
+        mock_applet_1 = MagicMock()
+
+        del mock_workflow.featureSelectionApplet  # ensure singular attribute absent
+        mock_workflow.featureSelectionApplets = [mock_applet_0, mock_applet_1]
+        mock_applet_0.topLevelOperator = op_with_invalid_scales.parent
+
+        with pytest.raises(FeatureSelectionConstraintError) as ex:
+            op_with_invalid_scales.SelectionMatrix.setValue(invalid_selection)
+
+        assert mock_callback_0 in ex.value.fixing_dialogs
+
+    def test_headless_produces_empty_fix_dlgs(
+        self,
+        mock_workflow: MagicMock,
+        op_with_invalid_scales: OpFeatureSelectionNoCache,
+        invalid_selection: numpy.ndarray,
+    ):
+        """
+        In headless mode, the feature applet exists but its _gui attribute is
+        None (unset). setupOutputs() must raise FeatureSelectionConstraintError
+        with an empty fixing_dialogs rather than crashing.
+        """
+        mock_applet = MagicMock()
+        mock_applet._gui = None  # _gui is unset/None in headless mode
+        mock_workflow.featureSelectionApplet = mock_applet
+
+        with pytest.raises(FeatureSelectionConstraintError) as ex:
+            op_with_invalid_scales.SelectionMatrix.setValue(invalid_selection)
+
+        assert ex.value.fixing_dialogs == []
