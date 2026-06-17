@@ -60,6 +60,7 @@ total_ram_mb: 0
 class RuntimeCfg:
     tiktorch_executable: Optional[List[str]] = None
     preferred_cuda_device_id: Optional[str] = None
+    skip_pixel_size_check: bool = False
 
 
 cfg: configparser.ConfigParser = configparser.ConfigParser()
