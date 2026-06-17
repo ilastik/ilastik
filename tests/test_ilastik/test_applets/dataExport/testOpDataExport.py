@@ -114,14 +114,16 @@ class TestDataExportPathFormatter:
         ds_info = self.DummyDSInfo(
             filePath="/tmp/a/b/test_ds.h5", nickname="test_nickname", default_output_dir="/tmp/a"
         )
-        return DataExportPathFormatter(dataset_info=ds_info, working_dir="/tmp/a", result_type="mytype")
+        return DataExportPathFormatter(dataset_info=ds_info, working_dir="/tmp/a", result_type="my type")
 
     @pytest.mark.parametrize(
         "template_str,expected_path",
         [
             ("{nickname}", "test_nickname"),
             ("{dataset_dir}/{nickname}", "/tmp/a/test_nickname"),
-            ("{dataset_dir}/{nickname}+{result_type}", "/tmp/a/test_nickname+mytype"),
+            ("{dataset_dir}/{nickname}+{result_type}", "/tmp/a/test_nickname+my type"),
+            ("{export_source_hyphenated}", "my-type"),
+            ("{dataset_dir}/{nickname}_{export_source_hyphenated}", "/tmp/a/test_nickname_my-type"),
             ("{var}", "{var}"),
             ("", ""),
             ("mypath", "mypath"),

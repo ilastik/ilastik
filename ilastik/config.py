@@ -48,7 +48,7 @@ default_config = """
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
-output_filename_format: {dataset_dir}/{nickname}_{result_type}
+output_filename_format: {dataset_dir}/{nickname}_{export_source_hyphenated}
 output_format: compressed hdf5
 
 [lazyflow]
