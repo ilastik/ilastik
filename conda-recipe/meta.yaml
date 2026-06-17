@@ -73,7 +73,7 @@ outputs:
         - tifffile >=2022
         - vigra 1.12.2
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
-        - z5py
+        - z5py 2.*
         - zarr 2.*
         # Third-party object feature plugins
         - sphericaltexture_plugin 0.1.0
