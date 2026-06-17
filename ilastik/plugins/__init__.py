@@ -20,3 +20,4 @@
 ###############################################################################
 from .types import ObjectFeaturesPlugin as ObjectFeaturesPlugin
 from .types import TrackingExportFormatPlugin as TrackingExportFormatPlugin
+from .manager import plugin_manager as plugin_manager

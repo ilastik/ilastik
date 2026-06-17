@@ -18,31 +18,57 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
+from typing import TYPE_CHECKING
 from ilastik.plugins import ObjectFeaturesPlugin
 import numpy
 
+from ilastik.plugins.types import PluginInfo
+
+if TYPE_CHECKING:
+    from ilastik.plugins.types import FeatureDescription, FloatArray
+    import vigra
+
 
 class TestFeatures(ObjectFeaturesPlugin):
+    plugin_info = PluginInfo(
+        name="TestFeatures", author="Anna Kreshuk", version="0.1", description="Dummy features for testing the pipeline"
+    )
 
-    all_features = {"with_nans": {}, "with_nones": {}, "fail_on_zero": {}}
+    all_features: dict[str, dict[str, str]] = {"with_nans": {}, "with_nones": {}, "fail_on_zero": {}}
 
-    def availableFeatures(self, image, labels):
+    def availableFeatures(self, image: "vigra.VigraArray", labels: "vigra.VigraArray") -> dict[str, dict[str, str]]:
         return self.all_features
 
-    def fill_properties(self, features):
+    def fill_properties(self, features: dict[str, dict[str, str]]) -> dict[str, "FeatureDescription"]:
         return {
-            "with_nans": {"displaytext": "with_nans", "detailtext": "with_nans details"},
-            "with_nones": {"displaytext": "with_nones", "detailtext": "with_nones details"},
-            "fail_on_zero": {"displaytext": "fail_on_zero", "detailtext": "fail_on_zero details"},
+            "with_nans": {
+                "displaytext": "with_nans",
+                "detailtext": "with_nans details",
+                "tooltip": "with_nans tooltip",
+                "advanced": False,
+            },
+            "with_nones": {
+                "displaytext": "with_nones",
+                "detailtext": "with_nones details",
+                "tooltip": "with_nones tooltip",
+                "advanced": False,
+            },
+            "fail_on_zero": {
+                "displaytext": "fail_on_zero",
+                "detailtext": "fail_on_zero details",
+                "tooltip": "fail_on_zero tooltip",
+                "advanced": False,
+            },
         }
 
-    def compute_global(self, image, labels, features, axes):
-        lmax = numpy.max(labels)
-        result = dict()
-        result["with_nans"] = numpy.zeros((lmax, 1))
-        result["with_nones"] = numpy.zeros((lmax, 1))
-        result["fail_on_zero"] = numpy.zeros((lmax, 1))
+    def compute_global(
+        self, image: "vigra.VigraArray", labels: "vigra.VigraArray", features: dict[str, dict[str, str]], axes: str
+    ) -> dict[str, "FloatArray"]:
+
+        lmax = int(numpy.max(labels))
+        result = dict(
+            with_nans=numpy.zeros((lmax, 1)), with_nones=numpy.zeros((lmax, 1)), fail_on_zero=numpy.zeros((lmax, 1))
+        )
 
         for i in range(lmax):
             if i % 3 == 0:

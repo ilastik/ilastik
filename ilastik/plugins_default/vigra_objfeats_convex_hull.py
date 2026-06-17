@@ -19,6 +19,7 @@
 # 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
+from ilastik.plugins.types import FeatureDict, FloatArray, PartialFeatureDict, PluginInfo
 from ilastik.plugins_default.convex_hull_feature_description import fill_feature_description
 import vigra
 import numpy
@@ -51,11 +52,13 @@ def cleanup(d, nObjects, features):
 
 
 class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
+    plugin_info = PluginInfo(name="2D Convex Hull Features", author="Janez Ales", version="0.1", description="2D")
+
     local_preffix = "Convex Hull "  # note the space at the end, it's important
 
     ndim = None
 
-    def availableFeatures(self, image, labels):
+    def availableFeatures(self, image: vigra.VigraArray, labels: vigra.VigraArray) -> PartialFeatureDict:
         if labels.ndim == 2:
             names = vigra.analysis.supportedConvexHullFeatures(labels)
             logger.debug("Convex Hull Features: Supported Convex Hull Features: done.")
@@ -70,8 +73,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
 
         return result
 
-    @staticmethod
-    def fill_properties(features):
+    def fill_properties(self, features: PartialFeatureDict) -> FeatureDict:
         # fill in the detailed information about the features.
         # features should be a dict with the feature_name as key.
         # NOTE, this function needs to be updated every time skeleton features change
@@ -105,6 +107,8 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         # The background object is always present (even if there is no 0 label) and is always removed here
         return cleanup(result, nobj, features)
 
-    def compute_global(self, image, labels, features, axes):
+    def compute_global(
+        self, image: vigra.VigraArray, labels: vigra.VigraArray, features: PartialFeatureDict, axes: str
+    ) -> dict[str, FloatArray]:
 
         return self._do_4d(image, labels, list(features.keys()), axes)

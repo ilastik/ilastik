@@ -34,7 +34,7 @@ from ilastik.applets.base.appletSerializer import (
     SerialSlot,
     deleteIfPresent,
 )
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import PluginNotFound, plugin_manager
 from ilastik.utility.commandLineProcessing import convertStringToList
 from lazyflow.slot import InputSlot, OutputSlot
 
@@ -148,8 +148,9 @@ class ObjectExtractionSerializer(AppletSerializer):
         selected_features_dict = selected_features_slot.value
         missing_features = []
         for plugin_name in selected_features_dict.keys():
-            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            if not plugin_inner:
+            try:
+                _ = plugin_manager.get_object_feature_plugin_by_name(plugin_name)
+            except PluginNotFound:
                 missing_features.append(plugin_name)
 
         if missing_features:

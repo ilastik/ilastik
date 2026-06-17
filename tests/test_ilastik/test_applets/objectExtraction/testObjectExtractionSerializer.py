@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy
 import pytest
@@ -35,12 +35,7 @@ def serializer(mock_op, project_group_name):
     return serializer
 
 
-@patch("ilastik.plugins.manager.pluginManager.getPluginByName")
-def test_deserializeFromHdf5_missing_feature_plugin(
-    mocked_plugin_fct, serializer, project_group_name, empty_in_memory_project_file
-):
-    mocked_plugin_fct.return_value = False
-
+def test_deserializeFromHdf5_missing_feature_plugin(serializer, project_group_name, empty_in_memory_project_file):
     empty_in_memory_project_file.create_dataset(f"/{project_group_name}/StorageVersion", data=b"1.0")
     empty_in_memory_project_file.create_dataset(
         f"/{project_group_name}/Features/SomeNoneExistingPlugin/SomeNoneExistingFeature", data=numpy.void(b"test")
@@ -49,11 +44,11 @@ def test_deserializeFromHdf5_missing_feature_plugin(
         serializer.deserializeFromHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
 
-@patch("ilastik.plugins.manager.pluginManager.getPluginByName")
+@patch("ilastik.plugins.manager.plugin_manager.get_object_feature_plugin_by_name")
 def test_deserializeFromHdf5_no_missing_feature_plugin(
     mocked_plugin_fct, mock_op, serializer, project_group_name, empty_in_memory_project_file
 ):
-    mocked_plugin_fct.return_value = True
+    mocked_plugin_fct.return_value = Mock()
 
     empty_in_memory_project_file.create_dataset(f"/{project_group_name}/StorageVersion", data=b"1.0")
     empty_in_memory_project_file.create_dataset(

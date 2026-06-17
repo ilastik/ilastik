@@ -13,7 +13,7 @@ dependencies:
   - greenlet
   - grpcio >=1.49.1
   - h5py
-  - hytra >=1.2.0
+  - hytra >=1.2.1
   - ilastik-feature-selection
   - ilastikrag >=0.1.4
   - ilastiktools
@@ -45,7 +45,7 @@ dependencies:
   # xarray versions not compatible with numpy 1.21, 2023.08.0 might be, but lost trust
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
-  - z5py
+  - z5py 2.*
   - zarr 2.*
   - aiohttp
   - fsspec
@@ -62,7 +62,7 @@ dependencies:
   - pytorch-3dunet 1.9.2
 
   # Third-party object feature plugins
-  - sphericaltexture_plugin
+  - sphericaltexture_plugin 0.1.0
   # TODO: sphericaltexture 0.1.1 currently times out in the tests
   - sphericaltexture 0.0.4
   - pyshtools >=4.13

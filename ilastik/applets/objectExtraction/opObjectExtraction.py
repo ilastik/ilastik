@@ -44,7 +44,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 
 
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -636,8 +636,8 @@ class OpRegionFeatures(Operator):
 
         # expand the feature list by our default features
         logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
-        plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
-        all_default_props = plugin.plugin_object.fill_properties(default_features)  # fill in display name and such
+        plugin = plugin_manager.get_object_feature_plugin_by_name("Standard Object Features")
+        all_default_props = plugin.fill_properties(default_features)  # fill in display name and such
         feature_names_with_default[default_features_key] = all_default_props
 
         if not "Standard Object Features" in list(feature_names.keys()):
@@ -714,9 +714,8 @@ class OpRegionFeatures(Operator):
         pool = RequestPool()
 
         def compute_for_one_plugin(plugin_name, feature_dict):
-            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            assert plugin_inner, f"object features plugin {plugin_name} missing!"
-            global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
+            plugin_object = plugin_manager.get_object_feature_plugin_by_name(plugin_name)
+            global_features[plugin_name] = plugin_object.compute_global(image, labels, feature_dict, axes)
 
         for plugin_name, feature_dict in feature_names.items():
             if plugin_name != default_features_key:
@@ -765,11 +764,11 @@ class OpRegionFeatures(Operator):
                 if not any("margin" in features for features in feature_dict.values()):
                     continue
 
-                plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+                plugin_object = plugin_manager.get_object_feature_plugin_by_name(plugin_name)
                 tmp_dicts = [None] * nobj
 
                 def _calc_single(i, raw_bbox, binary_bbox):
-                    feats = plugin.plugin_object.compute_local(raw_bbox, binary_bbox, feature_dict, axes)
+                    feats = plugin_object.compute_local(raw_bbox, binary_bbox, feature_dict, axes)
                     tmp_dicts[i] = feats
 
                 with RequestPool() as pool:

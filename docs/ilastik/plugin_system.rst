@@ -4,54 +4,47 @@
 Plugin System
 =============
 
-ilastik uses Yapsy (http://yapsy.sourceforge.net/) to manage plugins.
-The functionality is implemented in ``ilastik/plugins.py``.
+ilastik uses Python entry points to manage plugins.
+The functionality is implemented in ``ilastik.plugins``.
 
 -------------
 Using plugins
 -------------
 
-Simply import the ilastik plugin manager, which is an instance of
-``yapsy.PluginManager``::
+From the ilastik GUI:
+--------------------
 
-    from ilastik.plugins import pluginManager
+All installed plugins are available via the respective GUIs:
 
-Now you can do things like list all plugins::
+* in Object Classification via the Feature Selection step,
+* in Tracking when exporting data and configuring the Plugin Export Source.
 
-    pluginManager.getAllPlugins()
+From code:
+----------
 
-Or only get plugins of a particular category, such as object feature
-plugins::
+Simply import the ilastik plugin manager::
 
-    pluginManager.getPluginsOfCategory('ObjectFeatures')
+    from ilastik.plugins import plugin_manager
 
-For all the capabilities of the plugin manager class, see the Yapsy
-documentation: `PluginManager
-<http://yapsy.sourceforge.net/PluginManager.HTML>`_.
+You can get all plugin types for object features, and tracking export plugins::
 
-ilastik must be able to find available plugins. The ``.ilastikrc``
-configuration file should contain a line listing all directories to be
-searched recursively::
+    plugin_manager.get_object_feature_plugins()
 
-    plugin_directories: ~/.ilastik/plugins,
+or
 
-In addition, the ``plugins_default`` directory, which contains the
-official plugins that are distributed with ilastik, is also searched.
+    plugin_manager.get_tracking_export_plugins()
 
 
--------------------------
-Writing a plugin category
--------------------------
+The ``ilastik/plugins_default`` directory contains the
+official plugins that are distributed with ilastik.
+These are listed as entrypoints in ``pyproject.toml``.
 
-Any subclass of ``Yapsy.IPlugin`` may be a plugin category. Remember
-to add it to the plugin manager with
-``pluginManager.setCategoriesFilter()`` in ``ilastik/plugins.py``. For
-more information see the Yapsy documentation: `Make it your own
-<http://yapsy.sourceforge.net/#make-it-your-own.>`_.
 
 ----------------
 Writing a plugin
 ----------------
 
-See the Yapsy documentation: `Plugin description policy
-<http://yapsy.sourceforge.net/PluginManager.html#plugin-description-policy>`_.
+We have a cookiecutter for writing your own plugins.
+
+* object features: `our object feature plugin cookiecutter <https://github.com/ilastik/ilastik-oc-feats-cookiecutter>`_
+* tracking export: please get in touch if you are interested in developing tracking export plugins.
