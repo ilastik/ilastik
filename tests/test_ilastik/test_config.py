@@ -67,3 +67,50 @@ def test_skip_pixel_size_check_prevents_lane_inspection():
         gui.topLevelOperator.getLane.assert_not_called()
     finally:
         runtime_cfg.skip_pixel_size_check = original
+
+
+def test_skip_pixel_size_check_set_when_checkbox_checked():
+    """
+    When the user checks 'Don't warn me again' in the pixel size mismatch
+    dialog, runtime_cfg.skip_pixel_size_check should be set to True,
+    preventing future warnings for the rest of the session.
+    """
+    from unittest.mock import MagicMock, patch
+    from ilastik.config import runtime_cfg
+    from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
+
+    original = runtime_cfg.skip_pixel_size_check
+    try:
+        runtime_cfg.skip_pixel_size_check = False
+
+        gui = MagicMock()
+        mock_lane_op = MagicMock()
+        mock_slot = MagicMock()
+        mock_slot.ready.return_value = True
+        mock_lane_op.ImageGroup = [mock_slot, mock_slot]
+        mock_lane_op.DatasetRoles.value = ["Raw Data", "Probabilities"]
+        gui.topLevelOperator.getLane.return_value = mock_lane_op
+
+        with patch(
+            "ilastik.applets.dataSelection.dataSelectionGui.OpDataSelectionGroup.eq_resolution_and_units_xyzt",
+            return_value=False,
+        ):
+            mock_checkbox = MagicMock()
+            mock_checkbox.isChecked.return_value = True
+            mock_dialog = MagicMock()
+
+            with (
+                patch(
+                    "ilastik.applets.dataSelection.dataSelectionGui.QMessageBox",
+                    return_value=mock_dialog,
+                ),
+                patch(
+                    "ilastik.applets.dataSelection.dataSelectionGui.QCheckBox",
+                    return_value=mock_checkbox,
+                ),
+            ):
+                DataSelectionGui._check_pixel_size_mismatch(gui, 0, 0)
+
+        assert runtime_cfg.skip_pixel_size_check is True
+    finally:
+        runtime_cfg.skip_pixel_size_check = original

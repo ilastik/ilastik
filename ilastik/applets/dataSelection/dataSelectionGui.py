@@ -28,7 +28,7 @@ from typing import Dict, List, Set, Union, Optional
 
 import h5py
 from qtpy import uic
-from qtpy.QtWidgets import QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
+from qtpy.QtWidgets import QCheckBox, QDialog, QMessageBox, QStackedWidget, QWidget, QApplication
 from qtpy.QtCore import Qt
 from vigra import AxisTags
 from volumina.utility import preferences
@@ -544,7 +544,15 @@ class DataSelectionGui(QWidget):
                 "the correct images, and verify the pixel size when you load "
                 "exported datasets in other tools.\nProblematic datasets:\n"
             ) + "\n".join(mismatches)
-            QMessageBox.warning(self, "Pixel size mismatch", msg)
+            dialog = QMessageBox(self)
+            dialog.setIcon(QMessageBox.Warning)
+            dialog.setWindowTitle("Pixel size mismatch")
+            dialog.setText(msg)
+            checkbox = QCheckBox("Don't warn me about this again this session")
+            dialog.setCheckBox(checkbox)
+            dialog.exec_()
+            if checkbox.isChecked():
+                runtime_cfg.skip_pixel_size_check = True
 
     def _switch_scale_in_other_roles_to_match(self, new_info: DatasetInfo, new_slot: Slot):
         """
