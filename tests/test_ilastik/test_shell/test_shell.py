@@ -34,3 +34,35 @@ def test_valid_screen_geometry(loaded_geometry: QRect, screen_geometry: QRect, e
         ps_mock.return_value.availableGeometry.return_value = screen_geometry
         resulting_geometry = IlastikShell._valid_screen_geometry(loaded_geometry)
         assert resulting_geometry == expected_geometry
+
+
+def test_createAndLoadNewProject_shows_dialog_on_oserror():
+    """
+    When createBlankProjectFile raises an OSError (e.g. file locked by another
+    process), createAndLoadNewProject should show a QMessageBox.critical dialog
+    and return early without attempting to load the project.
+
+    Fixes #3098: Trying to overwrite locked project file fails silently.
+    """
+    from unittest.mock import MagicMock, patch
+
+    shell = MagicMock(spec=IlastikShell)
+    shell._workflow_cmdline_args = []
+
+    with (
+        patch(
+            "ilastik.shell.gui.ilastikShell.ProjectManager.createBlankProjectFile",
+            side_effect=OSError("Unable to lock file"),
+        ),
+        patch("ilastik.shell.gui.ilastikShell.QMessageBox.critical") as mock_critical,
+    ):
+        IlastikShell.createAndLoadNewProject(shell, "/fake/path/project.ilp", MagicMock())
+
+    # Error dialog must have been shown
+    mock_critical.assert_called_once()
+    args = mock_critical.call_args[0]
+    assert "Failed to create project file" in args[1]
+    assert "/fake/path/project.ilp" in args[2]
+
+    # Project must NOT have been loaded
+    shell._loadProject.assert_not_called()
