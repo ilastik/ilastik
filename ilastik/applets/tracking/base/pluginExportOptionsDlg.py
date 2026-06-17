@@ -120,8 +120,8 @@ class PluginExportOptionsDlg(QDialog):
         Returns the list of available plugins
         """
         try:
-            exportPlugins = plugin_manager.get_tracking_plugins()
-            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+            exportPlugins = plugin_manager.get_tracking_export_plugins()
+            availableExportPlugins = [plugin.plugin_info.name for plugin in exportPlugins]
 
             return availableExportPlugins
         except ImportError:

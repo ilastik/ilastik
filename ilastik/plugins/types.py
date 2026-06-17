@@ -20,11 +20,16 @@
 ###############################################################################
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Mapping, NotRequired, Optional, Type, TypedDict
+from typing import Any, Mapping, NotRequired, Optional, TypedDict
 
 import numpy
 import numpy.typing as npt
 import vigra
+
+
+class PluginNotFound(Exception):
+    pass
+
 
 FloatArray = npt.NDArray[numpy.floating[Any]]
 
@@ -239,12 +244,13 @@ class TrackingExportFormatPlugin(ABC):
         """
         from ilastik.plugins.manager import plugin_manager
 
-        all_props = None
-
-        if category == "Default features":
-            plugin = plugin_manager.get_object_feature_plugin_by_name("Standard Object Features")
-        else:
-            plugin = plugin_manager.get_object_feature_plugin_by_name(category)
+        try:
+            if category == "Default features":
+                plugin = plugin_manager.get_object_feature_plugin_by_name("Standard Object Features")
+            else:
+                plugin = plugin_manager.get_object_feature_plugin_by_name(category)
+        except PluginNotFound:
+            return name
 
         plugin_feature_names = {name: {}}
         all_props = plugin.fill_properties(plugin_feature_names)  # fill in display name and such

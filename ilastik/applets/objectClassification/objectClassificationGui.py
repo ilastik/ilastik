@@ -448,7 +448,7 @@ class ObjectClassificationGui(LabelingGui):
                 if plugin_name in list(self.applet._selectedFeatures.keys()):
                     assert plugin_name in list(
                         computedFeatures.keys()
-                    ), f"Object Classification: {plugin_name} not found in available (computed) object features"
+                    ), f"Object Classification: {plugin_name} not found in available (computed) object features: {computedFeatures}"
 
                 if not plugin_name in selectedFeatures and plugin_name in self.applet._selectedFeatures:
                     selectedFeatures[plugin_name] = dict()

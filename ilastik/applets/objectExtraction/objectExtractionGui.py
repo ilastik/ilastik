@@ -23,6 +23,7 @@ from qtpy.QtGui import QColor, QMouseEvent
 from qtpy import uic
 from qtpy.QtCore import Qt, QEvent
 
+from ilastik.plugins.types import PluginNotFound
 from lazyflow.rtype import SubRegion
 import os
 from collections import defaultdict, Counter
@@ -140,9 +141,12 @@ class FeatureSelectionDialog(QDialog):
             selected_names = []
 
             groups = set()
-            plugin_object = plugin_manager.get_object_feature_plugin_by_name(pluginName)
             features_with_props = deepcopy(features)
-            plugin_object.fill_properties(features_with_props)
+            try:
+                plugin_object = plugin_manager.get_object_feature_plugin_by_name(pluginName)
+                plugin_object.fill_properties(features_with_props)
+            except PluginNotFound:
+                pass
 
             for name in sorted(features.keys()):
                 parameters = features[name]

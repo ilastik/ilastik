@@ -23,11 +23,7 @@ from dataclasses import dataclass
 from importlib.metadata import entry_points
 from typing import Type
 
-from .types import ObjectFeaturesPlugin, TrackingExportFormatPlugin
-
-
-class PluginNotFound(BaseException):
-    pass
+from .types import ObjectFeaturesPlugin, TrackingExportFormatPlugin, PluginNotFound
 
 
 @dataclass
@@ -41,7 +37,7 @@ class PluginManager:
     def get_object_feature_plugin_by_name(self, name: str) -> ObjectFeaturesPlugin:
         if name not in self._object_feature_plugins:
             raise PluginNotFound(
-                f"Could not find object feature plugin by {name=}. Available plugins: {','.join(self._object_feature_plugins.keys())}"
+                f"Could not find object feature plugin by {name=}. Available plugins: {', '.join(self._object_feature_plugins.keys())}"
             )
         return self._object_feature_plugins[name]()
 
@@ -51,7 +47,7 @@ class PluginManager:
     def get_tracking_export_plugin_by_name(self, name: str) -> TrackingExportFormatPlugin:
         if name not in self._tracking_export_plugins:
             raise PluginNotFound(
-                f"Could not find tacking export plugin by {name=}. Available plugins: {','.join(self._tracking_export_plugins.keys())}"
+                f"Could not find tacking export plugin by {name=}. Available plugins: {', '.join(self._tracking_export_plugins.keys())}"
             )
         return self._tracking_export_plugins[name]()
 
