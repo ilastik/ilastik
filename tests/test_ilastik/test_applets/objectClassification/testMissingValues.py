@@ -59,10 +59,10 @@ class TestMissingValueHandling(unittest.TestCase):
 
         self.features = {"Bad Plugin": {"bad_feature_1": {}, "bad_feature_2": {}}}
         featureArray1 = numpy.zeros((nobj + 1, 1))
-        featureArray1[2][0] = numpy.Inf
+        featureArray1[2][0] = numpy.inf
         featureArray1[4][0] = numpy.inf
         featureArray2 = numpy.zeros((nobj + 1, 1))
-        featureArray2[1][0] = numpy.NaN
+        featureArray2[1][0] = numpy.nan
         featureArray2[3][0] = numpy.nan
 
         self.featureArrays = {0: {"Bad Plugin": {"bad_feature_1": featureArray1, "bad_feature_2": featureArray2}}}

@@ -106,7 +106,7 @@ def test_scale_select_exists_and_triggers_gui_event(dataset_table, mock_gui):
     assert editor.count() == 2
 
     editor.setCurrentIndex(1)
-    assert mock_gui.handleScaleSelected.called_once_with(1, 1)
+    mock_gui.handleScaleSelected.assert_called_once_with(1, "50_50_10")
 
 
 def test_locked_scale_select_does_not_trigger_gui_and_informs_user(
@@ -202,6 +202,6 @@ def test_scale_select_disables_scale_options_not_available_in_other_roles(
 
     for enabled in enabled_options:
         editor.setCurrentIndex(enabled)
-        assert mock_gui.handleScaleSelected.called_once_with(
-            lane, enabled
+        mock_gui.handleScaleSelected.assert_called_once_with(
+            lane, str(enabled)
         ), f"scale option index {enabled} was supposed to be available"
