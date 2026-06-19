@@ -33,7 +33,6 @@ from lazyflow.utility.helpers import bigintprod
 
 import logging
 
-
 logger = logging.getLogger(__file__)
 
 if __name__ == "__main__":
@@ -797,10 +796,10 @@ def determine_optimal_request_blockshape(
 
         # Choose the best among the canidates
         scores = list(map(normalized_surface_area, candidate_blockshapes))
-        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1])
+        best_shape, best_score = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1])
         blockshape = best_shape
 
-    return tuple(blockshape)
+    return tuple(blockshape.tolist())
 
 
 def slicing_to_string(slicing, max_shape=None):

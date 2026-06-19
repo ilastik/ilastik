@@ -37,7 +37,7 @@ from lazyflow.utility.helpers import eq_shapes
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-# carving backend in ilastiktools
+# carving backend in ilastik-carving-tools
 from .watershed_segmentor import WatershedSegmentor
 
 from .carvingTools import watershed_and_agglomerate, parallel_filter
