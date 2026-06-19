@@ -38,7 +38,7 @@ If you don't have a dataset to work with, download one of the example projects t
 ### Conda installation (experimental)
 
 ilastik is also available as a conda package on our `ilastik-forge` conda channel.
-You can install it from the commandline using [conda][conda]:
+You can install it from the command line using [conda][conda]:
 
 ```bash
  conda create -n ilastik --override-channels -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ilastik
