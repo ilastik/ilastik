@@ -184,7 +184,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
         logger.debug(f"decoding encoding {encoding}; dtype {dtype}")
         if encoding == "raw":
             raw = content
-            arr = numpy.fromstring(raw, dtype=dtype).reshape(shape)
+            arr = numpy.frombuffer(raw, dtype=dtype).reshape(shape)
             return arr
         else:
             raise NotImplementedError(f"encoding {encoding} not supported :(")
