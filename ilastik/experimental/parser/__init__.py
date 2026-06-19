@@ -20,3 +20,5 @@
 ###############################################################################
 from ._projects import AutocontextProject as AutocontextProject
 from ._projects import PixelClassificationProject as PixelClassificationProject
+from ._projects import ObjectClassificationFromSegmentationProject as ObjectClassificationFromSegmentationProject
+from ._projects import ObjectClassificationFromProbabilitiesProject as ObjectClassificationFromProbabilitiesProject
