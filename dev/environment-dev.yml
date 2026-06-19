@@ -1,11 +1,9 @@
 channels:
-  # ilastik-forge/label/patched-2 contains patched windows versions of pyshtools 4.13
-  - ilastik-forge/label/patched-2
   - conda-forge
   - ilastik-forge
 dependencies:
-  - python 3.11.*
-  - numpy 1.*
+  - python 3.13.*
+  - numpy 2.*
   - cachetools
   - dpct
   - fastfilters
@@ -16,7 +14,7 @@ dependencies:
   - hytra >=1.2.1
   - ilastik-feature-selection
   - ilastikrag >=0.1.4
-  - ilastiktools
+  - ilastik-carving-tools
   - jsonschema
   - mamutexport
   - marching_cubes

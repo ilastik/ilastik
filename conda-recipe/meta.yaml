@@ -46,7 +46,7 @@ outputs:
         - hytra >=1.2.1
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
-        - ilastiktools
+        - ilastik-carving-tools
         - jsonschema
         - mamutexport
         - marching_cubes
