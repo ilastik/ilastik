@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,7 +20,6 @@ from __future__ import print_function
 ###############################################################################
 import os
 import sys
-import imp
 import numpy
 import tempfile
 
@@ -30,7 +27,6 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-import ilastik
 from lazyflow.utility.timer import timeLogged
 
 

@@ -18,10 +18,8 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import print_function
 import os
 import sys
-import imp
 import numpy
 import vigra
 import h5py
@@ -31,7 +29,6 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-import ilastik
 from ilastik import app
 from ilastik.applets.dataSelection.opDataSelection import PreloadedArrayDatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
