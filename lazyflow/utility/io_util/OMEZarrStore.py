@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Literal, Tuple, Any
 from urllib.parse import unquote_to_bytes
 
 from clearscale import Multiscale
-from clearscale.ome_zarr import make_fake_shapes
+from clearscale.ome_zarr import make_proportional_shapes
 import s3fs
 import vigra
 from aiohttp import ClientConnectorError, ClientResponseError
@@ -281,7 +281,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     valid_ms = []
     for ms_dict in spec["multiscales"]:
         try:
-            valid_ms.append(Multiscale.from_ome_zarr(ms_dict, get_shape=make_fake_shapes(ms_dict)))
+            valid_ms.append(Multiscale.from_ome_zarr(ms_dict, shape_source=make_proportional_shapes(ms_dict)))
         except ValueError:
             continue
     if not valid_ms:
@@ -389,7 +389,7 @@ class OMEZarrStore(MultiscaleStore):
                 }
             return zarray.shape
 
-        multiscale = Multiscale.from_ome_zarr(self._multiscale_spec, get_shape=get_shape_keep_zarray)
+        multiscale = Multiscale.from_ome_zarr(self._multiscale_spec, shape_source=get_shape_keep_zarray)
         dtype = next(iter(self._scale_data.values()))["zarray"].dtype.type
         axistags = vigra.defaultAxistags("".join(multiscale.axes()))
         super().__init__(
