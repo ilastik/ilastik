@@ -196,7 +196,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 },
             ],
         },
-        get_shape=lambda path: {
+        shape_source=lambda path: {
             "raw_scale": (2, 17, 17, 17),
             "source_scale": (2, 9, 9, 9),
             "downscale": (2, 5, 5, 5),
@@ -377,7 +377,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
                 },
             ],
         },
-        get_shape=lambda path: (2, 5, 5, 5),
+        shape_source=lambda path: (2, 5, 5, 5),
     )
     target_scales = BlueprintShapes(
         [

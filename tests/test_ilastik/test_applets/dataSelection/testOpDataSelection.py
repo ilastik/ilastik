@@ -21,7 +21,7 @@
 import json
 import os
 import shutil
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
@@ -1035,7 +1035,7 @@ class TestOpDataSelection_OMEZarr:
 
         assert op.Image.meta.scales == Multiscale.from_ome_zarr(
             self.ZATTRS["multiscales"][0],
-            get_shape=lambda path: {"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX}[path],
+            shape_source=lambda path: {"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX}[path],
         )
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)

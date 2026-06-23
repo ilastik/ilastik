@@ -381,7 +381,8 @@ class TestOpInputDataReaderWithOMEZarr:
 
         expected_images = [image_original, image_scaled]
         expected_multiscale = Multiscale.from_ome_zarr(
-            correct_multiscale_zattrs, get_shape=lambda path: tuple({path0: dataset_shape, path1: scaled_shape}[path])
+            correct_multiscale_zattrs,
+            shape_source=lambda path: tuple({path0: dataset_shape, path1: scaled_shape}[path]),
         )
 
         return request.param, expected_images, expected_multiscale
