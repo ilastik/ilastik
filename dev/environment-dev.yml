@@ -50,6 +50,9 @@ dependencies:
   - aiohttp
   - fsspec
   - s3fs >=2022.8.2
+  - pip
+  - pip:
+    - git+https://github.com/ilastik/clearscale
 
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions by uncommenting the following line:
