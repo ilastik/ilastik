@@ -35,6 +35,8 @@ outputs:
         - aiohttp
         - cachetools
         - certifi
+        # clearscale for OME-Zarr & Neuroglancer Precomputed metadata
+        - clearscale 0.9.0
         - dpct
         - fastfilters
         # fsspec to enable zarr.storage.FSStore
