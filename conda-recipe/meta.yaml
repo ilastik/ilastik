@@ -47,6 +47,8 @@ outputs:
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
         - ilastik-carving-tools
+        # some builds of jsoncpp broke the promise of abi stability
+        - jsoncpp [version='==1.9.7',build_number='0']
         - jsonschema
         - mamutexport
         - marching_cubes

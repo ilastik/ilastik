@@ -49,6 +49,9 @@ dependencies:
   - fsspec
   - s3fs >=2022.8.2
 
+  # some builds of jsoncpp broke the promise of abi stability
+  - jsoncpp [version='==1.9.7',build_number='0']
+
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions by uncommenting the following line:
   # - pytorch=*=*cuda*
