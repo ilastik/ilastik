@@ -930,7 +930,8 @@ class OpConservationTracking(Operator):
                         traxel.set_feature_value("localCentersZ", i, float(v[2]))
 
                 traxel.add_feature_array("count", 1)
-                traxel.set_feature_value("count", 0, float(size))
+                assert size.size == 1, f"Expected 1-element array, got {size.shape}"
+                traxel.set_feature_value("count", 0, float(size[0]))
 
                 if (
                     x_upper < x_range[0]

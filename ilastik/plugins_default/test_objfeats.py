@@ -72,7 +72,7 @@ class TestFeatures(ObjectFeaturesPlugin):
 
         for i in range(lmax):
             if i % 3 == 0:
-                result["with_nans"][i] = numpy.NaN
+                result["with_nans"][i] = numpy.nan
                 result["with_nones"][i] = None
             else:
                 result["with_nans"][i] = 21
