@@ -1,4 +1,5 @@
 channels:
+  - ilastik-forge/label/patched-3
   - conda-forge
   - ilastik-forge
 dependencies:
