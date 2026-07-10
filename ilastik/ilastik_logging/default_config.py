@@ -198,7 +198,6 @@ def get_default_config(
             "botocore.httpchecksum": {"level": "WARN"},
             "wsdt": {"level": "INFO"},
             "OpenGL": {"level": "INFO"},
-            "yapsy": {"level": "INFO"},
             # Loglevels for our own modules (ilastik, lazyflow, volumina) are in ./logging_config.json.
         },
     }

@@ -23,6 +23,7 @@ from qtpy.QtGui import QColor, QMouseEvent
 from qtpy import uic
 from qtpy.QtCore import Qt, QEvent
 
+from ilastik.plugins.types import PluginNotFound
 from lazyflow.rtype import SubRegion
 import os
 from collections import defaultdict, Counter
@@ -33,7 +34,7 @@ from functools import partial
 from itertools import chain
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
@@ -140,10 +141,12 @@ class FeatureSelectionDialog(QDialog):
             selected_names = []
 
             groups = set()
-            plugin = pluginManager.getPluginByName(pluginName, "ObjectFeatures")
             features_with_props = deepcopy(features)
-            if plugin is not None:
-                plugin.plugin_object.fill_properties(features_with_props)
+            try:
+                plugin_object = plugin_manager.get_object_feature_plugin_by_name(pluginName)
+                plugin_object.fill_properties(features_with_props)
+            except PluginNotFound:
+                pass
 
             for name in sorted(features.keys()):
                 parameters = features[name]
@@ -600,7 +603,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
     def _populate_feature_dict(self, mainOperator):
         featureDict = {}
-        plugins = pluginManager.getPluginsOfCategory("ObjectFeatures")
+        plugins = plugin_manager.get_object_feature_plugins()
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
         fakeimgshp = [taggedShape["x"], taggedShape["y"]]
         fakelabelsshp = [taggedShape["x"], taggedShape["y"]]
@@ -630,10 +633,10 @@ class ObjectExtractionGui(LayerViewerGui):
             else:
                 fakeimg = vigra.taggedView(fakeimg, "xy")
 
-        for pluginInfo in plugins:
-            availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+        for plugin_object in plugins:
+            availableFeatures = plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
-                featureDict[pluginInfo.name] = availableFeatures
+                featureDict[plugin_object.plugin_info.name] = availableFeatures
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)

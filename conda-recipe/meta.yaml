@@ -43,7 +43,7 @@ outputs:
         - greenlet
         - grpcio !=1.42.*
         - h5py
-        - hytra >=1.2.0
+        - hytra >=1.2.1
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
         - ilastiktools
@@ -73,9 +73,10 @@ outputs:
         - tifffile >=2022
         - vigra 1.12.2
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
-        - yapsy
-        - z5py
+        - z5py 2.*
         - zarr 2.*
+        # Third-party object feature plugins
+        - sphericaltexture_plugin 0.1.0
       run_constrained:
         - tiktorch 26.5.0
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
@@ -132,8 +133,6 @@ outputs:
         - tiktorch
         - torchvision
         - volumina
-        # Third-party object feature plugins
-        - sphericaltexture_plugin
 
     test:
       source_files:

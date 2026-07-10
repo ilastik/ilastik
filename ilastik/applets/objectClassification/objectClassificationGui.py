@@ -54,7 +54,7 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.plugins.manager import pluginManager
+from ilastik.plugins.manager import plugin_manager
 
 from lazyflow.request import Request, RequestPool
 
@@ -411,7 +411,7 @@ class ObjectClassificationGui(LabelingGui):
         else:
             selectedFeatures = computedFeatures
 
-        plugins = pluginManager.getPluginsOfCategory("ObjectFeatures")
+        plugins = plugin_manager.get_object_feature_plugins()
         taggedShape = mainOperator.RawImages.meta.getTaggedShape()
         fakeimgshp = [taggedShape["x"], taggedShape["y"]]
         fakelabelsshp = [taggedShape["x"], taggedShape["y"]]
@@ -441,22 +441,21 @@ class ObjectClassificationGui(LabelingGui):
             else:
                 fakeimg = vigra.taggedView(fakeimg, "xy")
 
-        for pluginInfo in plugins:
-            availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+        for plugin_object in plugins:
+            availableFeatures = plugin_object.availableFeatures(fakeimg, fakelabels)
+            plugin_name = plugin_object.plugin_info.name
             if len(availableFeatures) > 0:
-                if pluginInfo.name in list(self.applet._selectedFeatures.keys()):
-                    assert pluginInfo.name in list(
+                if plugin_name in list(self.applet._selectedFeatures.keys()):
+                    assert plugin_name in list(
                         computedFeatures.keys()
-                    ), "Object Classification: {} not found in available (computed) object features".format(
-                        pluginInfo.name
-                    )
+                    ), f"Object Classification: {plugin_name} not found in available (computed) object features: {computedFeatures}"
 
-                if not pluginInfo.name in selectedFeatures and pluginInfo.name in self.applet._selectedFeatures:
-                    selectedFeatures[pluginInfo.name] = dict()
+                if not plugin_name in selectedFeatures and plugin_name in self.applet._selectedFeatures:
+                    selectedFeatures[plugin_name] = dict()
 
-                    for feature in list(self.applet._selectedFeatures[pluginInfo.name].keys()):
+                    for feature in list(self.applet._selectedFeatures[plugin_name].keys()):
                         if feature in list(availableFeatures.keys()):
-                            selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
+                            selectedFeatures[plugin_name][feature] = availableFeatures[feature]
 
         dlg = FeatureSubSelectionDialog(computedFeatures, selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
