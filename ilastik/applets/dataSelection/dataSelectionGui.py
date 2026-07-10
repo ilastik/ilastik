@@ -548,7 +548,7 @@ class DataSelectionGui(QWidget):
             dialog.setIcon(QMessageBox.Warning)
             dialog.setWindowTitle("Pixel size mismatch")
             dialog.setText(msg)
-            checkbox = QCheckBox("Don't warn me about this again this session")
+            checkbox = QCheckBox("Don't warn me again about pixel size mismatches for the duration of this session.")
             dialog.setCheckBox(checkbox)
             dialog.exec_()
             if checkbox.isChecked():
