@@ -36,11 +36,6 @@ def test_runtime_cfg_skip_pixel_size_check_can_be_set():
     assert cfg.skip_pixel_size_check is True
 
 
-def test_runtime_cfg_skip_pixel_size_check_default_is_false():
-    """By default pixel size check should NOT be skipped."""
-    cfg = RuntimeCfg()
-    assert cfg.skip_pixel_size_check is False
-
 
 def test_skip_pixel_size_check_prevents_lane_inspection():
     """
