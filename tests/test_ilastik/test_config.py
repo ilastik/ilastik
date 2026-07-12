@@ -36,7 +36,6 @@ def test_runtime_cfg_skip_pixel_size_check_can_be_set():
     assert cfg.skip_pixel_size_check is True
 
 
-
 def test_skip_pixel_size_check_prevents_lane_inspection():
     """
     When runtime_cfg.skip_pixel_size_check is True, _check_pixel_size_mismatch
