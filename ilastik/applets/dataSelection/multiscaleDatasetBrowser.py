@@ -59,6 +59,8 @@ class DefaultWidthComboBox(QComboBox):
         return size
 
     def minimumSizeHint(self):
+        """Prevent the dropdown from being as wide as the history.
+        OME-Zarr URLs have a habit of being very long, making the dialog huge by default"""
         size = super().minimumSizeHint()
         size.setWidth(0)
         return size
@@ -129,10 +131,11 @@ class MultiscaleDatasetBrowser(QDialog):
     def setup_ui(self):
         self.setMinimumSize(30 * line_height(), 16 * line_height())
         self.setWindowTitle("Select Multiscale Source")
+        self.setAcceptDrops(True)
         main_layout = QVBoxLayout()
 
         description = QLabel(self)
-        description.setText('Enter path or URL and click "Check".')
+        description.setText('Enter path or URL and click "Check". Or drag-and-drop a folder.')
         main_layout.addWidget(description)
 
         self.combo = DefaultWidthComboBox(self)
@@ -160,8 +163,8 @@ class MultiscaleDatasetBrowser(QDialog):
         self.browse_button.clicked.connect(self._browse_for_directory)
         self.check_button = QPushButton(self)
         self.check_button.setText("Check")
-        self.check_button.clicked.connect(self._validate_text_input)
-        self.combo.lineEdit().returnPressed.connect(self.check_button.click)
+        self.check_button.clicked.connect(lambda _: self._validate_text_input())
+        self.combo.lineEdit().returnPressed.connect(self._validate_text_input)
         combo_layout.addWidget(combo_label, 0, 0)
         combo_layout.addWidget(self.combo, 0, 1)
         combo_layout.addWidget(self.browse_button, 0, 2)
@@ -196,6 +199,26 @@ class MultiscaleDatasetBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
+    def dropEvent(self, dropEvent):
+        urls = dropEvent.mimeData().urls()
+        self.combo.clear()
+        self.combo.lineEdit().setText(urls[0].toLocalFile())
+        self._validate_text_input()
+
+    def dragEnterEvent(self, event):
+        # Only accept drag-and-drop events that consist of a single url to a local folder
+        if not event.mimeData().hasUrls():
+            return
+        urls = event.mimeData().urls()
+        if len(urls) != 1:
+            return
+        url = urls[0]
+        if not url.isLocalFile():
+            return
+        path = pathlib.Path(url.toLocalFile())
+        if path.is_dir():
+            event.acceptProposedAction()
+
     def _starting_directory_for_folder_picker(self) -> str:
         text = self.combo.currentText().strip()
         pref_path = pathlib.Path(preferences.get(self.PREFERENCES_GROUP, self.PREFERENCES_SETTING, pathlib.Path.home()))
@@ -205,7 +228,7 @@ class MultiscaleDatasetBrowser(QDialog):
             return str(default_dir)
 
         try:
-            return str(uri_to_Path(text))  # Valid file URI?
+            return str(uri_to_Path(text))  # Valid `file:` URI?
         except ValueError:
             pass
 
@@ -221,21 +244,19 @@ class MultiscaleDatasetBrowser(QDialog):
         return str(default_dir)
 
     def _browse_for_directory(self):
-        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Select OME-Zarr Dataset Folder",
+            "Select OME-Zarr Multiscale Folder",
             self._starting_directory_for_folder_picker(),
-            options=options,
         )
         if not directory:
             return
 
         preferences.set(self.PREFERENCES_GROUP, self.PREFERENCES_SETTING, pathlib.Path(directory).as_posix())
         self.combo.lineEdit().setText(directory)
-        self.check_button.click()
+        self._validate_text_input()
 
-    def _validate_text_input(self, _event):
+    def _validate_text_input(self):
         self._set_inputs_enabled(False)
         self.selected_uri = None
         text = self.combo.currentText().strip()

@@ -142,11 +142,11 @@ def test_browse_button_selects_directory_and_checks(qtbot, tmp_path):
                 multiscaleDatasetBrowser.QFileDialog, "getExistingDirectory", return_value=str(selected_directory)
             ) as select_directory:
                 dialog = get_dlg(qtbot)
-                with mock.patch.object(dialog.check_button, "click") as check_button_click:
+                with mock.patch.object(dialog, "_validate_text_input") as validate:
                     qtbot.mouseClick(dialog.browse_button, Qt.MouseButton.LeftButton)
 
     select_directory.assert_called_once()
-    check_button_click.assert_called_once_with()
+    validate.assert_called_once_with()
     assert dialog.combo.lineEdit().text() == str(selected_directory)
 
 
@@ -234,7 +234,7 @@ def test_browse_button_cancel_does_not_check(qtbot, tmp_path):
     with mock.patch.object(multiscaleDatasetBrowser.preferences, "get", return_value=tmp_path):
         with mock.patch.object(multiscaleDatasetBrowser.QFileDialog, "getExistingDirectory", return_value=""):
             dialog = get_dlg(qtbot)
-            with mock.patch.object(dialog.check_button, "click") as check_button_click:
+            with mock.patch.object(dialog, "_validate_text_input") as validate:
                 qtbot.mouseClick(dialog.browse_button, Qt.MouseButton.LeftButton)
 
-    check_button_click.assert_not_called()
+    validate.assert_not_called()
