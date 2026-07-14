@@ -75,7 +75,8 @@ jobs:
         command: >
             cd ${ILASTIK_ROOT}/ilastik-meta &&
             conda env create --name ${TEST_ENV_NAME} --file ilastik/dev/environment-dev.yml &&
-            conda install --name ${TEST_ENV_NAME} --freeze-installed -c ilastik-forge -c conda-forge mpi4py pytest-cov volumina &&
+            conda install --name ${TEST_ENV_NAME} --freeze-installed -c ilastik-forge -c conda-forge mpi4py pytest-cov &&
+            conda run -n ${TEST_ENV_NAME} pip install git+https://github.com/ilastik/volumina.git@py313 &&
             conda run -n ${TEST_ENV_NAME} pip install -e ilastik
         no_output_timeout: 20m
 
