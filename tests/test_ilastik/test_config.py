@@ -19,7 +19,10 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import pytest
-from ilastik.config import RuntimeCfg
+from unittest.mock import MagicMock, patch
+
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
+from ilastik.config import RuntimeCfg, runtime_cfg
 
 
 def test_runtime_cfg_defaults():
@@ -41,9 +44,6 @@ def test_skip_pixel_size_check_prevents_lane_inspection():
     When runtime_cfg.skip_pixel_size_check is True, _check_pixel_size_mismatch
     should return immediately without inspecting any lanes.
     """
-    from unittest.mock import MagicMock, patch
-    from ilastik.config import runtime_cfg
-    from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 
     # Patch runtime_cfg.skip_pixel_size_check to True
     original = runtime_cfg.skip_pixel_size_check
