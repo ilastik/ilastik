@@ -69,10 +69,6 @@ def test_skip_pixel_size_check_set_when_checkbox_checked():
     dialog, runtime_cfg.skip_pixel_size_check should be set to True,
     preventing future warnings for the rest of the session.
     """
-    from unittest.mock import MagicMock, patch
-    from ilastik.config import runtime_cfg
-    from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
-
     original = runtime_cfg.skip_pixel_size_check
     try:
         runtime_cfg.skip_pixel_size_check = False
