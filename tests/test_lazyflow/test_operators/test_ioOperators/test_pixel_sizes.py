@@ -83,7 +83,7 @@ def test_read_OpTiffReader(image_path, expected_meta, inputdata_dir):
         if axis == "c":  # Channel sizes are not written to TIFF
             assert op.Output.meta.axistags[axis].resolution == 0
             continue
-        (resolution, unit) = expected_meta[axis]
+        resolution, unit = expected_meta[axis]
         tag = op.Output.meta.axistags[axis]
         assert tag.resolution == resolution
         assert op.Output.meta.axis_units[axis] == unit
@@ -203,7 +203,7 @@ def test_write_read_roundtrip_tiff_OpExportMultipageTiff(graph, tmp_path):
         if axis == "c":
             assert reader.Output.meta.axistags[axis].resolution == 0
             continue
-        (resolution, unit) = expected_meta[axis]
+        resolution, unit = expected_meta[axis]
         tag = reader.Output.meta.axistags[axis]
         # Rounding is not necessary here as ome stores resolution as floats
         assert tag.resolution == resolution
@@ -546,18 +546,18 @@ def test_DataSelection_roles_gui_warns_on_conflict(
     applet.topLevelOperator.DatasetRoles.setValue(["Raw Data", "Secondary", "Tertiary"])
     gui = applet.getMultiLaneGui()
 
-    warn_mock = mock.Mock()
-    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+    exec_mock = mock.Mock()
+    with mock.patch("qtpy.QtWidgets.QMessageBox.exec_", exec_mock):
         gui.addLanes([dataset_with_pixel_size], 0, None)
-    warn_mock.assert_not_called()
+    exec_mock.assert_not_called()
 
-    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+    with mock.patch("qtpy.QtWidgets.QMessageBox.exec_", exec_mock):
         gui.addLanes([dataset_no_pixel_size], 1, 0)
-    warn_mock.assert_not_called()
+    exec_mock.assert_not_called()
 
-    with mock.patch("qtpy.QtWidgets.QMessageBox.warning", warn_mock):
+    with mock.patch("qtpy.QtWidgets.QMessageBox.exec_", exec_mock):
         gui.addLanes([dataset_other_pixel_size], 2, 0)
-    warn_mock.assert_called_once_with(gui, "Pixel size mismatch", ANY)
+    exec_mock.assert_called_once()
 
 
 def test_DataSelection_roles_rolls_back(
