@@ -21,11 +21,12 @@
 import json
 import os
 import shutil
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
+from clearscale import Multiscale
 import numpy
 import requests
 import vigra
@@ -884,12 +885,7 @@ class TestOpDataSelection_PrecomputedChunks:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == OrderedDict(
-            [
-                ("800_800_70", OrderedDict([("c", 1), ("z", 1), ("y", 20), ("x", 24)])),
-                ("1600_1600_70", OrderedDict([("c", 1), ("z", 1), ("y", 10), ("x", 12)])),
-            ]
-        )
+        assert op.Image.meta.scales == Multiscale.from_precomputed(self.INFO_JSON)
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
         scale_keys = list(op.Image.meta.scales.keys())
@@ -1037,11 +1033,9 @@ class TestOpDataSelection_OMEZarr:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == OrderedDict(
-            [
-                ("s0", OrderedDict([("z", 1), ("y", 20), ("x", 24)])),
-                ("s1", OrderedDict([("z", 1), ("y", 10), ("x", 12)])),
-            ]
+        assert op.Image.meta.scales == Multiscale.from_ome_zarr(
+            self.ZATTRS["multiscales"][0],
+            shape_source=lambda path: {"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX}[path],
         )
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
@@ -1264,7 +1258,13 @@ class TestOpDataSelection_DatasetInfo:
         responses = {
             ".zattrs": {
                 "multiscales": [
-                    {"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}], "version": "0.4"}
+                    {
+                        "axes": [{"name": "x"}, {"name": "y"}],
+                        "datasets": [
+                            {"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1.0, 1.0]}]}
+                        ],
+                        "version": "0.4",
+                    }
                 ]
             },
             "s0/.zarray": {

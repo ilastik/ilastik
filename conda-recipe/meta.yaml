@@ -21,6 +21,7 @@ outputs:
       script_env:
         - SETUPTOOLS_SCM_PRETEND_VERSION={{version}}
       script:
+        - {{PYTHON}} -m pip install git+https://github.com/ilastik/clearscale
         - {{PYTHON}} -m pip install . --no-deps -vv
     requirements:
       host:
@@ -28,6 +29,7 @@ outputs:
         - pip
         - setuptools >=64.0
         - setuptools_scm >=6.2
+        - hatchling
       run:
         - python >=3.10
         - numpy >1.12,<1.27
