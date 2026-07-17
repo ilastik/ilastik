@@ -1560,9 +1560,19 @@ class IlastikShell(QMainWindow):
         :param h5_file_kwargs: Passed directly to h5py.File.__init__() of the project file; all standard params except 'mode' are allowed.
         """
 
-        newProjectFile = ProjectManager.createBlankProjectFile(
-            newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs
-        )
+        try:
+            newProjectFile = ProjectManager.createBlankProjectFile(
+                newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs
+            )
+        except OSError as e:
+            QMessageBox.critical(
+                self,
+                "Failed to create project file",
+                f"Could not create project file at:\n{newProjectFilePath}\n\n"
+                f"The file may be locked by another process (e.g. open in another ilastik instance).\n\n"
+                f"Error: {e}",
+            )
+            return
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
 
         # If load failed, projectManager is None
