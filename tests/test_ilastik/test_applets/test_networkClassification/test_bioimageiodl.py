@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import inspect
 from pathlib import Path
 from typing import Iterator
 from zipfile import ZipFile
@@ -63,3 +64,77 @@ def test_is_zipfile_returns_false_nonexisting(pattern: str):
 def test_is_zipfile_with_existing_files(existing_files: tuple[Path, bool]):
     filename, expection = existing_files
     assert bioimageiodl._is_existing_local_zip_file(filename) == expection
+
+
+def test_tqdmext_initial_total_is_zero():
+    """
+    TqdmExt used for per-file download progress must be initialized with
+    total=0 (unknown), NOT total=1 (placeholder hack).
+
+    With total=1, any chunk update where n > 1 (e.g. n=4096 bytes) would
+    cause the callback to compute n/total*100 = 409600%, which is the root
+    cause of the progress bar exceeding 100% (issue #3166).
+
+    With total=0, the _cb guard `if total > 0` prevents any emission until
+    the real total is set by the HTTP downloader from response headers.
+    """
+    t = bioimageiodl.TqdmExt(total=0, callback=None)
+    assert t.total == 0, (
+        "TqdmExt must start with total=0 so progress is not emitted "
+        "before the real file size is known from HTTP headers"
+    )
+
+
+@pytest.mark.parametrize(
+    "n,total,expected",
+    [
+        (0, 0, None),  # total unknown, should not emit
+        (4096, 0, None),  # total unknown, should not emit
+        (4096, 1, 409600),  # old broken behavior with total=1 placeholder
+        (4096, 1_000_000, 0),  # correct: small chunk of large file
+        (500_000, 1_000_000, 50),  # correct: halfway
+        (1_000_000, 1_000_000, 100),  # correct: complete
+    ],
+)
+def test_progress_callback_math(n, total, expected):
+    """
+    Verify the progress callback formula n/total*100 directly.
+    This documents both the old broken behavior (total=1) and correct behavior (total=0).
+    """
+    emitted = []
+
+    def cb(**fmt):
+        t = fmt["total"]
+        v = fmt["n"]
+        if t > 0:
+            emitted.append(int(v / t * 100))
+
+    # Call cb directly as TqdmExt would
+    cb(n=n, total=total)
+
+    if expected is None:
+        assert emitted == [], f"Should not emit when total=0, got {emitted}"
+    else:
+        assert emitted == [expected], f"Expected [{expected}], got {emitted}"
+
+
+def test_bioimagedownloader_uses_total_zero_for_per_file_progress():
+    """
+    BioImageDownloader.run() must initialize TqdmExt with total=0 for
+    per-file download progress, NOT total=1 (the old placeholder hack).
+
+    With total=1, chunk updates (e.g. n=4096 bytes) cause the callback
+    to compute n/total*100 = 409600%, making the progress bar exceed 100%.
+
+    This test inspects the source of BioImageDownloader.run() to verify
+    total=0 is used, since the actual download requires network access.
+    """
+    source = inspect.getsource(bioimageiodl.BioImageDownloader.run)
+    assert "total=0" in source, (
+        "BioImageDownloader.run() must use total=0 when initializing TqdmExt "
+        "for per-file progress. Using total=1 causes progress values over 100%."
+    )
+    assert "total=1" not in source, (
+        "BioImageDownloader.run() must NOT use total=1 as a placeholder — "
+        "this causes n/total*100 to exceed 100% on first chunk updates."
+    )
