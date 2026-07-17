@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+import inspect
 from pathlib import Path
 from typing import Iterator
 from zipfile import ZipFile
@@ -128,8 +129,6 @@ def test_bioimagedownloader_uses_total_zero_for_per_file_progress():
     This test inspects the source of BioImageDownloader.run() to verify
     total=0 is used, since the actual download requires network access.
     """
-    import inspect
-
     source = inspect.getsource(bioimageiodl.BioImageDownloader.run)
     assert "total=0" in source, (
         "BioImageDownloader.run() must use total=0 when initializing TqdmExt "
