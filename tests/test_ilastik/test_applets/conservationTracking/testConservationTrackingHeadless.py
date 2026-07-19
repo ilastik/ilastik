@@ -262,9 +262,31 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
         assert os.path.exists(self.EXPECTED_MWT_BLOBS_FILE)
         assert os.path.exists(self.EXPECTED_MWT_SUMMARY_FILE)
-        assert Path(self.EXPECTED_MWT_BLOBS_FILE).read_text().split("\n") == Path(
-            self.REFERENCE_MWT_BLOBS_FILE
-        ).read_text().split("\n")
-        assert Path(self.EXPECTED_MWT_SUMMARY_FILE).read_text().split("\n") == Path(
-            self.REFERENCE_MWT_SUMMARY_FILE
-        ).read_text().split("\n")
+
+        generated_list = Path(self.EXPECTED_MWT_BLOBS_FILE).read_text().split("\n")
+        reference_list = Path(self.REFERENCE_MWT_BLOBS_FILE).read_text().split("\n")
+
+        assert len(generated_list) == len(reference_list)
+        self.compare_mwt_files(generated_list, reference_list)
+
+        generated_list = Path(self.EXPECTED_MWT_SUMMARY_FILE).read_text().split("\n")
+        reference_list = Path(self.REFERENCE_MWT_SUMMARY_FILE).read_text().split("\n")
+
+        assert len(generated_list) == len(reference_list)
+        self.compare_mwt_files(generated_list, reference_list)
+
+    @staticmethod
+    def compare_mwt_files(generated_list: list[str], reference_list: list[str]):
+        """Float-aware comparison of mwt files
+
+        switching to numpy 2 introduced slight differences, tolerance determined experimentally"""
+        ABS_TOLERANCE = 10**-6
+        for gen, ref in zip(generated_list, reference_list):
+            gen_elems = gen.split(" ")
+            ref_elems = ref.split(" ")
+            assert len(gen_elems) == len(ref_elems)
+            for eg, er in zip(gen_elems, ref_elems):
+                try:
+                    assert abs(float(eg) - float(er)) <= ABS_TOLERANCE
+                except ValueError:
+                    assert eg == er

@@ -1,11 +1,10 @@
 channels:
-  # ilastik-forge/label/patched-2 contains patched windows versions of pyshtools 4.13
-  - ilastik-forge/label/patched-2
+  - ilastik-forge/label/patched-3
   - conda-forge
   - ilastik-forge
 dependencies:
-  - python 3.11.*
-  - numpy 1.*
+  - python 3.13.*
+  - numpy 2.*
   - cachetools
   - dpct
   - fastfilters
@@ -16,7 +15,7 @@ dependencies:
   - hytra >=1.2.1
   - ilastik-feature-selection
   - ilastikrag >=0.1.4
-  - ilastiktools
+  - ilastik-carving-tools
   - jsonschema
   - mamutexport
   - marching_cubes
@@ -41,7 +40,7 @@ dependencies:
   # for python 3.7 compatible environment use
   # tiffile >2020.9.22,<=2021.11.2
   - tifffile >=2022
-  - vigra 1.12.2
+  - vigra 1.12.3
   # xarray versions not compatible with numpy 1.21, 2023.08.0 might be, but lost trust
   # 2023.10.1 correctly pins numpy to 1.22 and up
   - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
@@ -54,7 +53,7 @@ dependencies:
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions by uncommenting the following line:
   # - pytorch=*=*cuda*
-  - pytorch 2.7.*
+  - pytorch 2.10.*
   - torchvision>=0.21
   - tiktorch 26.5.0
 

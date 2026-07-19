@@ -33,7 +33,6 @@ from lazyflow.utility.helpers import bigintprod
 
 import logging
 
-
 logger = logging.getLogger(__file__)
 
 if __name__ == "__main__":
@@ -739,11 +738,11 @@ def determine_optimal_request_blockshape(
     Note: For most use-cases, the ``ram_usage_per_requested_pixel`` parameter refers to the ram consumed when requesting ALL channels of an image.
           Therefore, you probably want to omit the channel dimension from your max_blockshape and ideal_blockshape parameters.
 
-    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e6 )
-    (158, 158, 1)
+    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e6 ) == (158, 158, 1)
+    True
 
-    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e9 )
-    (1000, 1000, 24)
+    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e9 ) == (1000, 1000, 24)
+    True
 
     """
     assert len(max_blockshape) == len(ideal_blockshape)
@@ -797,7 +796,7 @@ def determine_optimal_request_blockshape(
 
         # Choose the best among the canidates
         scores = list(map(normalized_surface_area, candidate_blockshapes))
-        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1])
+        best_shape, best_score = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1])
         blockshape = best_shape
 
     return tuple(blockshape)

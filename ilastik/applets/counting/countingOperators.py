@@ -281,8 +281,8 @@ class OpTrainCounter(Operator):
             numTags = np.sum(posTags) + np.sum(negTags)
             fullFeatMatrix = np.ndarray((numTags, self.Images[0].meta.shape[-1]), dtype=np.float64)
             fullLabelsMatrix = np.ndarray((numTags), dtype=np.float64)
-            fullFeatMatrix[:] = np.NAN
-            fullLabelsMatrix[:] = np.NAN
+            fullFeatMatrix[:] = np.nan
+            fullLabelsMatrix[:] = np.nan
             currPosCount = 0
             currNegCount = numPosTags
             for i, posCount in enumerate(posTags):

@@ -154,5 +154,5 @@ jobs:
         run: |
           set VOLUMINA_SHOW_3D_WIDGET=0
           conda build --test --override-channels ^
-            -c ./pkgs -c ilastik-forge/label/patched-2 -c conda-forge -c ilastik-forge ^
+            -c ./pkgs -c ilastik-forge/label/patched-3 -c conda-forge -c ilastik-forge ^
             ./pkgs/noarch/%ILASTIK_PACKAGE_NAME%
