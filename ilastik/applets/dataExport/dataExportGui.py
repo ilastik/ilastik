@@ -319,6 +319,13 @@ class DataExportGui(QWidget):
         if len(selectedRanges) == 0:
             self.batchOutputTableWidget.selectRow(0)
 
+    @staticmethod
+    def _normalize_progress_fraction(progress: float) -> float:
+        """Convert progress values in 0..100 or 0..1 into a 0..1 fraction."""
+        if progress > 1.0:
+            progress = progress / 100.0
+        return min(max(progress, 0.0), 1.0)
+
     def setEnabledIfAlive(self, widget, enable):
         if qtpy.compat.isalive(widget):
             widget.setEnabled(enable)
@@ -384,7 +391,8 @@ class DataExportGui(QWidget):
             self.progressSignal(1)
 
             def signalFileProgress(slotIndex, percent):
-                self.progressSignal(int((100 * slotIndex + percent) / len(laneViewList)))
+                fraction = self._normalize_progress_fraction(percent)
+                self.progressSignal(int(round(100.0 * (slotIndex + fraction) / len(laneViewList))))
 
             # Client hook
             self.parentApplet.prepare_for_entire_export()

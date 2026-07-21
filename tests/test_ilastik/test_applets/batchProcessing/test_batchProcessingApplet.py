@@ -26,6 +26,18 @@ from ilastik.applets.batchProcessing.batchProcessingApplet import BatchProcessin
 from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup
 
 
+class FakeProgressSignal:
+    def __init__(self):
+        self._subscribers = []
+
+    def subscribe(self, callback):
+        self._subscribers.append(callback)
+
+    def __call__(self, progress):
+        for callback in list(self._subscribers):
+            callback(progress)
+
+
 @pytest.fixture
 def dataselectionApplet():
     dsa = Mock()
@@ -97,3 +109,52 @@ def test_BatchProcessingCallsPostProcessOnException(batchProcessingApplet):
     dataExportApplet.post_process_entire_export.assert_called_once()
     dataExportApplet.prepare_lane_for_export.assert_called_once()
     dataExportApplet.post_process_lane_export.assert_not_called()
+
+
+def _setup_batch_processing_export(batchProcessingApplet, num_items=2):
+    progress_signals = [FakeProgressSignal() for _ in range(num_items)]
+    opDataExports = [Mock() for _ in range(num_items)]
+    for opDataExport, signal in zip(opDataExports, progress_signals):
+        opDataExport.progressSignal = signal
+    batchProcessingApplet.dataExportApplet.topLevelOperator.getLane.side_effect = opDataExports
+    return progress_signals, opDataExports
+
+
+def test_BatchProcessingProgressScalesAndIsMonotonic(batchProcessingApplet):
+    progress_signals, opDataExports = _setup_batch_processing_export(batchProcessingApplet, num_items=2)
+    progress_events = []
+    batchProcessingApplet.progressSignal = lambda value: progress_events.append(value)
+
+    def export_function(op):
+        op.progressSignal(0)
+        op.progressSignal(50)
+        op.progressSignal(100)
+        return "done"
+
+    lane_configs = [{"a": 1}, {"a": 2}]
+    batchProcessingApplet.run_export(lane_configs=lane_configs, export_to_array=False, export_function=export_function)
+
+    assert all(0 <= value <= 100 for value in progress_events)
+    assert all(progress_events[i] <= progress_events[i + 1] for i in range(len(progress_events) - 1))
+    assert progress_events[0] == 0
+    assert progress_events[-1] == 100
+
+
+def test_BatchProcessingProgressNormalizesFractionalProgressValues(batchProcessingApplet):
+    progress_signals, opDataExports = _setup_batch_processing_export(batchProcessingApplet, num_items=2)
+    progress_events = []
+    batchProcessingApplet.progressSignal = lambda value: progress_events.append(value)
+
+    def export_function(op):
+        op.progressSignal(0.0)
+        op.progressSignal(0.5)
+        op.progressSignal(1.0)
+        return "done"
+
+    lane_configs = [{"a": 1}, {"a": 2}]
+    batchProcessingApplet.run_export(lane_configs=lane_configs, export_to_array=False, export_function=export_function)
+
+    assert all(0 <= value <= 100 for value in progress_events)
+    assert all(progress_events[i] <= progress_events[i + 1] for i in range(len(progress_events) - 1))
+    assert progress_events[0] == 0
+    assert progress_events[-1] == 100

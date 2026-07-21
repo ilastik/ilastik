@@ -97,6 +97,37 @@ class BatchProcessingApplet(Applet):
         parsed_args, unused_args = parser.parse_known_args(cmdline_args)
         return parsed_args, unused_args
 
+    @staticmethod
+    def _normalize_progress_fraction(progress: float) -> float:
+        """Convert a progress value to a 0..1 fraction.
+
+        Some progress sources publish values in the range 0..1, while others
+        publish values in 0..100. Normalize both representations for consistent batch
+        progress scaling.
+        """
+        if progress > 1.0:
+            progress = progress / 100.0
+        return min(max(progress, 0.0), 1.0)
+
+    @staticmethod
+    def _make_batch_progress_callback(batch_index: int, total_batches: int, progress_signal: Callable[[int], None]):
+        """Create a progress callback that scales per-item progress into the overall batch."""
+        global_progress_start = batch_index / total_batches
+        global_progress_end = (batch_index + 1) / total_batches
+        last_progress = -1
+
+        def callback(progress_value):
+            nonlocal last_progress
+            fraction = BatchProcessingApplet._normalize_progress_fraction(progress_value)
+            global_fraction = (1.0 - fraction) * global_progress_start + fraction * global_progress_end
+            global_percent = int(round(global_fraction * 100.0))
+            if global_percent < last_progress:
+                global_percent = last_progress
+            last_progress = global_percent
+            progress_signal(global_percent)
+
+        return callback
+
     def run_export_from_parsed_args(self, parsed_args: argparse.Namespace):
         "Run the export for each dataset listed in parsed_args as interpreted by DataSelectionApplet."
         if parsed_args.distributed:
@@ -153,16 +184,12 @@ class BatchProcessingApplet(Applet):
             results = []
             for batch_index, lane_config in enumerate(lane_configs):
 
-                def lerpProgressSignal(a, b, p):
-                    self.progressSignal((100 - p) * a + p * b)
-
-                global_progress_start = batch_index / len(lane_configs)
-                global_progress_end = (batch_index + 1) / len(lane_configs)
-
                 result = self.export_dataset(
                     lane_config,
                     export_function=export_function,
-                    progress_callback=partial(lerpProgressSignal, global_progress_start, global_progress_end),
+                    progress_callback=self._make_batch_progress_callback(
+                        batch_index, len(lane_configs), self.progressSignal
+                    ),
                 )
                 results.append(result)
             return results
