@@ -82,7 +82,8 @@ class BioImageDownloader(QThread):
             def _callback(progress_signal: Signal) -> Callable[[int, int], None]:
                 def _cb(n: int, total: int, **kwargs):
                     if total > 0:
-                        progress_signal.emit(int(n / total * 100))
+                        progress = int(n / total * 100)
+                        progress_signal.emit(max(0, min(100, progress)))
 
                 return _cb
 
