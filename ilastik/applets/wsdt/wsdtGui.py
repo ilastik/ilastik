@@ -43,6 +43,7 @@ from qtpy.QtWidgets import (
 )
 
 from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_float, ensure_int
 from volumina.api import createDataSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
 from volumina.utility import ShortcutManager
@@ -229,11 +230,11 @@ class WsdtGui(LayerViewerGui):
             else:
                 self.channel_button.setText(",".join(map(str, channel_selections)))
 
-            self.threshold_box.setValue(op.Threshold.value)
-            self.min_size_box.setValue(op.MinSize.value)
-            self.sigma_box.setValue(op.Sigma.value)
-            self.alpha_box.setValue(op.Alpha.value)
-            self.enable_debug_box.setChecked(op.EnableDebugOutputs.value)
+            self.threshold_box.setValue(ensure_float(op.Threshold.value))
+            self.min_size_box.setValue(ensure_int(op.MinSize.value))
+            self.sigma_box.setValue(ensure_float(op.Sigma.value))
+            self.alpha_box.setValue(ensure_float(op.Alpha.value))
+            self.enable_debug_box.setChecked(ensure_bool(op.EnableDebugOutputs.value))
             self.update_ws_button.setEnabled(op.Superpixels.ready())
 
     def configure_operator_from_gui(self):

@@ -30,6 +30,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui, LabelingSlots
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import roi2rect, threadRouted
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_float, ensure_int
 from ilastik.widgets.boxListModel import BoxListModel
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility import traceLogged
@@ -407,11 +408,11 @@ class CountingGui(LabelingGui):
         # FIXME: quick fix recently introduced bug
         if type(Sigma) == list:
             Sigma = Sigma[0]
-        self.labelingDrawerUi.SigmaBox.setValue(Sigma)
-        self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
-        self.labelingDrawerUi.CBox.setValue(C)
-        self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
-        self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
+        self.labelingDrawerUi.SigmaBox.setValue(ensure_float(Sigma))
+        self.labelingDrawerUi.EpsilonBox.setValue(ensure_float(Epsilon))
+        self.labelingDrawerUi.CBox.setValue(ensure_float(C))
+        self.labelingDrawerUi.NtreesBox.setValue(ensure_int(Ntrees))
+        self.labelingDrawerUi.MaxDepthBox.setValue(ensure_int(MaxDepth))
         if _ind == -1:
             self.labelingDrawerUi.SVROptions.setCurrentIndex(0)
             self._updateSVROptions()
@@ -807,9 +808,9 @@ class CountingGui(LabelingGui):
             # FIXME: also check that each label has scribbles?
 
         # self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
-        self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
-        self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
-        self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
+        self.labelingDrawerUi.liveUpdateButton.setEnabled(ensure_bool(enabled))
+        self._viewerControlUi.checkShowPredictions.setEnabled(ensure_bool(enabled))
+        self._viewerControlUi.checkShowSegmentation.setEnabled(ensure_bool(enabled))
 
     #    @Slot()
     #    @traceLogged(traceLogger)

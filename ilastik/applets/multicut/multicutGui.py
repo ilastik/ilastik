@@ -39,6 +39,7 @@ from qtpy.QtWidgets import (
 )
 
 from ilastik.utility.gui import threadRouted, silent_qobject
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_float
 from volumina.api import createDataSource
 from volumina.layer import SegmentationEdgesLayer
 from volumina.utility import ShortcutManager
@@ -289,9 +290,9 @@ class MulticutGuiMixin:
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
-            self.update_button.setEnabled(op.FreezeCache.value)
-            self.probability_threshold_box.setValue(op.ProbabilityThreshold.value)
-            self.beta_box.setValue(op.Beta.value)
+            self.update_button.setEnabled(ensure_bool(op.FreezeCache.value))
+            self.probability_threshold_box.setValue(ensure_float(op.ProbabilityThreshold.value))
+            self.beta_box.setValue(ensure_float(op.Beta.value))
 
             solver_name = op.SolverName.value
             try:
