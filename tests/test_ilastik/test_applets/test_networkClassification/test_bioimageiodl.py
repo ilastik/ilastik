@@ -90,7 +90,7 @@ def test_tqdmext_initial_total_is_zero():
     [
         (0, 0, None),  # total unknown, should not emit
         (4096, 0, None),  # total unknown, should not emit
-        (4096, 1, 100),  # clamped to 100 even with total=1 placeholder
+        (4096, 1, None),  # n > total means content-encoding mismatch, should not emit
         (4096, 1_000_000, 0),  # correct: small chunk of large file
         (500_000, 1_000_000, 50),  # correct: halfway
         (1_000_000, 1_000_000, 100),  # correct: complete
@@ -106,8 +106,8 @@ def test_progress_callback_math(n, total, expected):
     def cb(**fmt):
         t = fmt["total"]
         v = fmt["n"]
-        if t > 0:
-            emitted.append(max(0, min(100, int(v / t * 100))))
+        if t > 0 and v <= t:
+            emitted.append(int(v / t * 100))
 
     # Call cb directly as TqdmExt would
     cb(n=n, total=total)
