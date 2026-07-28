@@ -82,7 +82,7 @@ def _match_target_scales_to_input(
             input_scales, target_shape=export_shape, source_key=input_key, scaled_axes=SPATIAL_AXES, rounding="floor"
         ).filter_items(two_spatials_or_is_input)
 
-    return shapes.with_axes(OME_ZARR_AXES).with_sizes(export_shape, axes="tc")
+    return shapes.with_axes(OME_ZARR_AXES).with_sizes(export_shape, only_axes="tc")
 
 
 def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> BlueprintShapes:
