@@ -1,5 +1,3 @@
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,6 +20,7 @@ from builtins import object
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
+import platform
 import h5py
 import pytest
 
@@ -34,8 +33,10 @@ from lazyflow.utility.pathHelpers import (
     isUrl,
 )
 
+WIN = "windows" in platform.system().lower()
 
-class TestPathHelpers(object):
+
+class TestPathHelpers:
     def testPathComponents(self):
         components = PathComponents("/some/external/path/to/file.h5/with/internal/path/to/data")
         assert components.externalPath == "/some/external/path/to/file.h5"
@@ -104,27 +105,39 @@ class TestPathHelpers(object):
         for l in [5, 10, 15, 20, 30]:
             assert len(compressPathForDisplay(path, l)) == l
 
-    def test_getPathVariants(self):
-        abs, rel = getPathVariants("/aaa/bbb/ccc/ddd.txt", "/aaa/bbb/ccc/eee")
-        # assert abs == '/aaa/bbb/ccc/ddd.txt'
-        # Use normpath to make sure this test works on windows...
-        expected = os.path.normpath(os.path.join("/aaa/bbb/ccc/eee", "/aaa/bbb/ccc/ddd.txt")).replace("\\", "/")
-        assert abs == expected, "{} != {}".format(abs, expected)
-        assert rel == "../ddd.txt"
-
-        abs, rel = getPathVariants("../ddd.txt", "/aaa/bbb/ccc/eee")
-        # assert abs == '/aaa/bbb/ccc/ddd.txt'
-        # Use normpath to make sure this test works on windows...
-        assert abs == os.path.normpath(os.path.join("/aaa/bbb/ccc/eee", "../ddd.txt")).replace("\\", "/")
-        assert rel == "../ddd.txt"
-
-        abs, rel = getPathVariants("ddd.txt", "/aaa/bbb/ccc")
-        # assert abs == '/aaa/bbb/ccc/ddd.txt'
-        # Use normpath to make sure this test works on windows...
-        assert abs == os.path.normpath(os.path.join("/aaa/bbb/ccc", "ddd.txt")).replace("\\", "/")
-        assert rel == "ddd.txt"
-
-        assert getPathVariants("", "/abc") == ("/abc", ""), "{} != {}".format(getPathVariants("", "/abc"), ("/abc", ""))
+    @pytest.mark.parametrize(
+        "original_path, working_dir, expected_abs, expected_rel",
+        [
+            (
+                "C:/aaa/bbb/ccc/ddd.txt" if WIN else "/aaa/bbb/ccc/ddd.txt",
+                "C:/aaa/bbb/ccc/eee" if WIN else "/aaa/bbb/ccc/eee",
+                "C:/aaa/bbb/ccc/ddd.txt" if WIN else "/aaa/bbb/ccc/ddd.txt",
+                "../ddd.txt",
+            ),
+            (
+                "../ddd.txt",
+                "C:/aaa/bbb/ccc/eee" if WIN else "/aaa/bbb/ccc/eee",
+                "C:/aaa/bbb/ccc/ddd.txt" if WIN else "/aaa/bbb/ccc/ddd.txt",
+                "../ddd.txt",
+            ),
+            (
+                "ddd.txt",
+                "C:/aaa/bbb/ccc" if WIN else "/aaa/bbb/ccc",
+                "C:/aaa/bbb/ccc/ddd.txt" if WIN else "/aaa/bbb/ccc/ddd.txt",
+                "ddd.txt",
+            ),
+            (
+                "",
+                "C:/abc" if WIN else "/abc",
+                "C:/abc" if WIN else "/abc",
+                "",
+            ),
+        ],
+    )
+    def test_getPathVariants(self, original_path: str, working_dir: str, expected_abs: str, expected_rel: str):
+        abs, rel = getPathVariants(original_path, working_dir)
+        assert abs == expected_abs
+        assert rel == expected_rel
 
     def testHdf5Glob(self):
         hdf5File = self.createHdf5Data()

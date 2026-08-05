@@ -22,6 +22,8 @@
 import os
 import logging
 
+from ilastik.utility.gui.qtcompat import ensure_float
+
 logger = logging.getLogger(__name__)
 
 # PyQt
@@ -88,7 +90,7 @@ class PreprocessingGui(QMainWindow):
         self.filterChoice = [f.isChecked() for f in self.filterbuttons].index(True)
 
     def updateSigmaFromOperator(self, *args):
-        self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
+        self.drawer.sigmaSpin.setValue(ensure_float(self.topLevelOperatorView.Sigma.value))
 
     def updateDrawerFromOperator(self, *args):
         self.updateFilterFromOperator()
@@ -171,7 +173,7 @@ class PreprocessingGui(QMainWindow):
         self.handleFilterChanged()
 
     def setSigma(self, sigma):
-        self.drawer.sigmaSpin.setValue(sigma)
+        self.drawer.sigmaSpin.setValue(ensure_float(sigma))
 
     def centralWidget(self):
         return self.centralGui

@@ -605,7 +605,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             generated_h5_table = generated_h5_file["table"]
             types = reference_h5_table.dtype.fields
             for col_name, col_type in types.items():
-                if col_type[0].type == numpy.string_:
+                if col_type[0].type == numpy.bytes_:
                     numpy.testing.assert_array_equal(generated_h5_table[col_name], reference_h5_table[col_name])
                 else:
                     # will not work with higher precision, this is most likely
@@ -634,7 +634,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             types = generated_h5_table.dtype.fields
             for col_name, col_type in types.items():
                 assert col_name in generated_csv_table
-                if col_type[0].type == numpy.string_:
+                if col_type[0].type == numpy.bytes_:
                     numpy.testing.assert_array_equal(
                         generated_h5_table[col_name], numpy.array(generated_csv_table[col_name], dtype=col_type[0])
                     )

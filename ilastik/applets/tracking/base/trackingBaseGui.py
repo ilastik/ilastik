@@ -24,6 +24,7 @@ from qtpy.QtWidgets import QMessageBox
 from qtpy.QtGui import QColor, QIcon
 
 
+from ilastik.utility.gui.qtcompat import ensure_float, ensure_int
 from volumina.api import createDataSource, ColortableLayer
 import volumina.colortables as colortables
 
@@ -46,7 +47,6 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
-
 
 logger = logging.getLogger(__name__)
 
@@ -183,44 +183,44 @@ class TrackingBaseGui(LayerViewerGui):
             parameters = self.mainOperator.Parameters.value
             self._setRanges()
             if "size_range" in parameters:
-                self._drawer.to_size.setValue(parameters["size_range"][1] - 1)
-                self._drawer.from_size.setValue(parameters["size_range"][0])
+                self._drawer.to_size.setValue(ensure_int(parameters["size_range"][1]) - 1)
+                self._drawer.from_size.setValue(ensure_int(parameters["size_range"][0]))
             else:
                 self._drawer.from_size.setValue(0)
                 self._drawer.to_size.setValue(10000)
 
             if "x_range" in parameters:
-                self._drawer.to_x.setValue(parameters["x_range"][1] - 1)
-                self._drawer.from_x.setValue(parameters["x_range"][0])
+                self._drawer.to_x.setValue(ensure_int(parameters["x_range"][1]) - 1)
+                self._drawer.from_x.setValue(ensure_int(parameters["x_range"][0]))
             else:
                 self._drawer.from_x.setValue(0)
-                self._drawer.to_x.setValue(maxx)
+                self._drawer.to_x.setValue(ensure_int(maxx))
 
             if "y_range" in parameters:
-                self._drawer.to_y.setValue(parameters["y_range"][1] - 1)
-                self._drawer.from_y.setValue(parameters["y_range"][0])
+                self._drawer.to_y.setValue(ensure_int(parameters["y_range"][1]) - 1)
+                self._drawer.from_y.setValue(ensure_int(parameters["y_range"][0]))
             else:
                 self._drawer.from_y.setValue(0)
-                self._drawer.to_y.setValue(maxy)
+                self._drawer.to_y.setValue(ensure_int(maxy))
 
             if "z_range" in parameters:
-                self._drawer.to_z.setValue(parameters["z_range"][1] - 1)
-                self._drawer.from_z.setValue(parameters["z_range"][0])
+                self._drawer.to_z.setValue(ensure_int(parameters["z_range"][1]) - 1)
+                self._drawer.from_z.setValue(ensure_int(parameters["z_range"][0]))
             else:
                 self._drawer.from_z.setValue(0)
-                self._drawer.to_z.setValue(maxz)
+                self._drawer.to_z.setValue(ensure_int(maxz))
 
             if "time_range" in parameters:
-                self._drawer.to_time.setValue(parameters["time_range"][1])
-                self._drawer.from_time.setValue(parameters["time_range"][0])
+                self._drawer.to_time.setValue(ensure_int(parameters["time_range"][1]))
+                self._drawer.from_time.setValue(ensure_int(parameters["time_range"][0]))
             else:
                 self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setValue(maxt)
+                self._drawer.to_time.setValue(ensure_int(maxt))
 
             if "scales" in parameters:
-                self._drawer.x_scale.setValue(parameters["scales"][0])
-                self._drawer.y_scale.setValue(parameters["scales"][1])
-                self._drawer.z_scale.setValue(parameters["scales"][2])
+                self._drawer.x_scale.setValue(ensure_float(parameters["scales"][0]))
+                self._drawer.y_scale.setValue(ensure_float(parameters["scales"][1]))
+                self._drawer.z_scale.setValue(ensure_float(parameters["scales"][2]))
             else:
                 self._drawer.x_scale.setValue(1)
                 self._drawer.y_scale.setValue(1)
@@ -244,16 +244,16 @@ class TrackingBaseGui(LayerViewerGui):
         to_z = self._drawer.to_z
 
         from_time.setRange(0, to_time.value() - 1)
-        to_time.setRange(from_time.value() + 1, maxt)
+        to_time.setRange(from_time.value() + 1, ensure_int(maxt))
 
         from_x.setRange(0, to_x.value())
-        to_x.setRange(from_x.value(), maxx)
+        to_x.setRange(from_x.value(), ensure_int(maxx))
 
         from_y.setRange(0, to_y.value())
-        to_y.setRange(from_y.value(), maxy)
+        to_y.setRange(from_y.value(), ensure_int(maxy))
 
         from_z.setRange(0, to_z.value())
-        to_z.setRange(from_z.value(), maxz)
+        to_z.setRange(from_z.value(), ensure_int(maxz))
 
     # TODO Remove the following code together with the labels in the GUI as it
     # is no longer needed. The merger colors are now determined by the track id

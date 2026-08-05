@@ -33,6 +33,7 @@ from qtpy.QtGui import QColor, QIcon
 from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog, QSizePolicy
 
 # lazyflow
+from ilastik.utility.gui.qtcompat import ensure_bool
 from lazyflow.request import Request
 
 # volumina
@@ -229,7 +230,7 @@ class CarvingGui(LabelingGui):
             self._toggleSegmentation3D()
 
     def _updateGui(self):
-        self.labelingDrawerUi.save.setEnabled(self.topLevelOperatorView.CanObjectBeSaved.value)
+        self.labelingDrawerUi.save.setEnabled(ensure_bool(self.topLevelOperatorView.CanObjectBeSaved.value))
 
     def onSegmentButton(self):
         logger.debug("segment button clicked")
@@ -678,7 +679,7 @@ class CarvingGui(LabelingGui):
             label = currObj if currObj else DEFAULT_OBJECT_NAME
 
             self.labelingDrawerUi.currentObjectLabel.setText(label)
-            self.labelingDrawerUi.save.setEnabled(canSave)
+            self.labelingDrawerUi.save.setEnabled(ensure_bool(canSave))
 
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.CanObjectBeSaved.notifyDirty(onButtonsEnabled)

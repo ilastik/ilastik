@@ -550,7 +550,7 @@ class TestOpCompressedUserLabelArray_masked(object):
         data into the label array, but copied one block at a time.
         """
         op = self.op
-        data = self.data + 5
+        data = self.data + numpy.uint8(5)
         opProvider = OpArrayPiper(graph=op.graph)
         opProvider.Input.setValue(data)
 

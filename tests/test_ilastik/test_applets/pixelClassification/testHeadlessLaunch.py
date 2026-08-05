@@ -11,7 +11,6 @@ NOTE: This test only works properly
 from __future__ import print_function
 import sys
 import os
-import imp
 import ilastik
 import ilastik.utility
 import pytest

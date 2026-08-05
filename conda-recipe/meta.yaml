@@ -30,7 +30,7 @@ outputs:
         - setuptools_scm >=6.2
       run:
         - python >=3.10
-        - numpy >1.12,<1.27
+        - numpy >=1.25
         # aiohttp to enable zarr.storage.FSStore
         - aiohttp
         - cachetools
@@ -46,7 +46,7 @@ outputs:
         - hytra >=1.2.1
         - ilastik-feature-selection
         - ilastikrag >=0.1.4
-        - ilastiktools
+        - ilastik-carving-tools
         - jsonschema
         - mamutexport
         - marching_cubes
@@ -71,7 +71,7 @@ outputs:
         # There seems to be a problem with scikit-learn 1.7.0, test testContourMWTExport breaks
         - scikit-learn <=1.6.1
         - tifffile >=2022
-        - vigra 1.12.2
+        - vigra 1.12.3
         - xarray !=2023.8.0,!=2023.9.0,!=2023.10.0
         - z5py 2.*
         - zarr 2.*
@@ -103,7 +103,7 @@ outputs:
         - pytest.ini
 
       requires:
-        - python 3.11
+        - python 3.13
         - pytest >4
         - pytest-qt
         - volumina
@@ -127,7 +127,7 @@ outputs:
         - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
-        - python 3.11.*
+        - python 3.13.*
         - {{ pin_subpackage("ilastik-core", exact=True) }}
         - pytorch >=2
         - tiktorch
@@ -175,7 +175,7 @@ outputs:
         - ilastik = ilastik_scripts.ilastik_startup:main
     requirements:
       run:
-        - python 3.11.*
+        - python 3.13.*
         - {{ pin_subpackage("ilastik-core", exact=True) }}
         - pytorch >=2
         - pytorch *=*cuda*

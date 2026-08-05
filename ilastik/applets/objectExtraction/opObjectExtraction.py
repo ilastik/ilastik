@@ -825,7 +825,7 @@ class OpRegionFeatures(Operator):
 
                 #
                 if plugin_name != default_features_key and key not in ["original_oid", "AtlasMapping"]:
-                    value = value.astype(numpy.float32)  # turn Nones into numpy.NaNs
+                    value = value.astype(numpy.float32)  # turn Nones into numpy.nans
 
                 assert value.shape[0] == nobj + 1
                 assert value.ndim == 2

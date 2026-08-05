@@ -118,7 +118,7 @@ def parallel_watershed(
     with Timer() as wstimer:
         # run the watershed blocks in parallel
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            offsets = np.fromiter(executor.map(ws_block, range(n_blocks)), dtype=np.int64)
+            offsets = np.fromiter(executor.map(ws_block, range(n_blocks)), dtype=np.uint32)
 
     logger.info(f"parallel ws took {wstimer.seconds()} s")
     offsets = np.cumsum(offsets)

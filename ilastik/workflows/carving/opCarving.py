@@ -46,7 +46,7 @@ DEFAULT_LABEL_PREFIX = "Object "
 @unique
 class Labels(IntEnum):
     """Label values for carving.
-    Values must be same as in ilastiktools/carving.hxx#setSeeds.
+    Values must be same as in ilastik-carving-tools/carving.hxx#setSeeds.
     """
 
     BACKGROUND = 1

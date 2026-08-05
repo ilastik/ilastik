@@ -70,7 +70,7 @@ def test_FileListWidget_drag_n_drop(qtbot, file_list_widget, drag_n_drop_event, 
     assert file_list_widget.count() == 0
 
     file_list_widget.dragEnterEvent(drag_n_drop_event)
-    assert drag_n_drop_event.acceptProposedAction.called_once()
+    drag_n_drop_event.acceptProposedAction.assert_called_once()
     assert file_list_widget.count() == 0
 
     file_list_widget.dropEvent(drag_n_drop_event)

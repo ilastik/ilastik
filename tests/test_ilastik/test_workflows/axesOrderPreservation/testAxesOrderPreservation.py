@@ -20,9 +20,6 @@
 ###############################################################################
 
 import h5py
-import ilastik
-import imp
-import itertools
 import logging
 import numpy
 import os

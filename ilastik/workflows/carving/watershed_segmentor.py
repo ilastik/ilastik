@@ -1,4 +1,4 @@
-import ilastiktools
+import ilastik_carving_tools
 import h5py
 
 
@@ -19,11 +19,11 @@ class WatershedSegmentor(object):
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
             if self.volumeFeat.ndim == 3:
-                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+                self.gridSegmentor = ilastik_carving_tools.GridSegmentor_3D_UInt32()
                 self.gridSegmentor.preprocessing(self.supervoxelUint32, self.volumeFeat)
 
             elif self.volumeFeat.ndim == 2:
-                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+                self.gridSegmentor = ilastik_carving_tools.GridSegmentor_2D_UInt32()
                 self.gridSegmentor.preprocessing(self.supervoxelUint32.squeeze(), self.volumeFeat)
 
             else:
@@ -39,9 +39,9 @@ class WatershedSegmentor(object):
             self.nodeNum = self.numNodes
             self.supervoxelUint32 = h5file["labels"][:]
             if self.supervoxelUint32.squeeze().ndim == 3:
-                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+                self.gridSegmentor = ilastik_carving_tools.GridSegmentor_3D_UInt32()
             else:
-                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+                self.gridSegmentor = ilastik_carving_tools.GridSegmentor_2D_UInt32()
             graphS = h5file["graph"][:]
             edgeWeights = h5file["edgeWeights"][:]
             nodeSeeds = h5file["nodeSeeds"][:]
@@ -75,7 +75,7 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
     def addSeeds(self, roi, brushStroke):
-        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
+        if isinstance(self.gridSegmentor, ilastik_carving_tools.GridSegmentor_3D_UInt32):
             roiBegin = roi.start[1:4]
             roiEnd = roi.stop[1:4]
         else:
@@ -87,7 +87,7 @@ class WatershedSegmentor(object):
         self.gridSegmentor.addSeeds(brushStroke=brushStroke, roiBegin=roiBegin, roiEnd=roiEnd, maxValidLabel=2)
 
     def getVoxelSegmentation(self, roi):
-        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
+        if isinstance(self.gridSegmentor, ilastik_carving_tools.GridSegmentor_3D_UInt32):
             roiBegin = roi.start[1:4]
             roiEnd = roi.stop[1:4]
             return self.gridSegmentor.getSegmentation(roiBegin=roiBegin, roiEnd=roiEnd)

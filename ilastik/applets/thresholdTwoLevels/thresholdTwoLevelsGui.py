@@ -35,6 +35,7 @@ from qtpy.QtCore import Qt, QEvent
 from qtpy.QtGui import QColor, QPixmap, QIcon
 from qtpy.QtWidgets import QMessageBox
 
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_float, ensure_int
 from volumina.api import createDataSource, AlphaModulatedLayer, ColortableLayer
 from volumina import colortables
 from volumina.colortables import create_default_16bit
@@ -179,13 +180,13 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
             spinBox.setValue(sigmaDict[axiskey])
 
         # Thresholds
-        self._drawer.lowThresholdSpinBox.setValue(op.LowThreshold.value)
-        self._drawer.highThresholdSpinBox.setValue(op.HighThreshold.value)
-        self._drawer.lambdaSpinBoxGC.setValue(op.Beta.value)
+        self._drawer.lowThresholdSpinBox.setValue(ensure_float(op.LowThreshold.value))
+        self._drawer.highThresholdSpinBox.setValue(ensure_float(op.HighThreshold.value))
+        self._drawer.lambdaSpinBoxGC.setValue(ensure_float(op.Beta.value))
 
         # Size filters
-        self._drawer.minSizeSpinBox.setValue(op.MinSize.value)
-        self._drawer.maxSizeSpinBox.setValue(op.MaxSize.value)
+        self._drawer.minSizeSpinBox.setValue(ensure_int(op.MinSize.value))
+        self._drawer.maxSizeSpinBox.setValue(ensure_int(op.MaxSize.value))
 
         # Operator
         method = op.CurOperator.value
@@ -194,7 +195,7 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
         # Methods 0,1,2 are 1-to-1, but method 3 means "two-level, but don't merge cores."
         method_combo_index = {0: 0, 1: 1, 2: 2, 3: 1}[method]
         self._drawer.methodComboBox.setCurrentIndex(method_combo_index)
-        self._drawer.preserveIdentitiesCheckbox.setChecked(op.CurOperator.value == 3)
+        self._drawer.preserveIdentitiesCheckbox.setChecked(ensure_bool(op.CurOperator.value == 3))
 
         self._enableMethodSpecificControls()
 
@@ -381,10 +382,8 @@ class ThresholdTwoLevelsGui(LayerViewerGui):
                     filteredSmallLabelsLayer.name = "After high threshold and size filter"
                     filteredSmallLabelsLayer.visible = False
                     filteredSmallLabelsLayer.opacity = 1.0
-                    filteredSmallLabelsLayer.setToolTip(
-                        "Results of thresholding with the high pixel value threshold,\
-                                                         followed by the size filter"
-                    )
+                    filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
+                                                         followed by the size filter")
                     layers.append(filteredSmallLabelsLayer)
                 if op.SmallRegions.ready():
                     highThresholdSrc = createDataSource(op.SmallRegions)

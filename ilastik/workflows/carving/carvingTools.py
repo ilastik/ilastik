@@ -152,7 +152,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     # run the watershed blocks in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         tasks = [executor.submit(ws_block, block_index) for block_index in range(n_blocks)]
-        offsets = numpy.array([t.result() for t in tasks], dtype="int64")  # TODO uint32
+        offsets = numpy.array([t.result() for t in tasks], dtype="uint32")
 
     # compute the block offsets and the max id
     last_max_id = offsets[-1]

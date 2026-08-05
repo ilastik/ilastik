@@ -73,7 +73,7 @@ class FeatureDlg(QDialog):
 
     def updateOKButton(self):
         num_features = numpy.sum(self.featureTableWidget.featureMatrix)
-        self.ok.setEnabled(num_features > 0)
+        self.ok.setEnabled(bool(num_features > 0))
 
     def showEvent(self, event):
         super().showEvent(event)

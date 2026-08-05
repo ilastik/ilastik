@@ -37,6 +37,8 @@ from qtpy.QtWidgets import (
     QMenu,
 )
 
+from ilastik.utility.gui.qtcompat import ensure_bool
+
 from .simpleEdgeFeatureSelection import SimpleEdgeFeatureSelection
 from lazyflow.utility.orderedSignal import OrderedSignal
 
@@ -405,7 +407,7 @@ class EdgeTrainingMixin:
             with silent_qobject(self.train_from_gt_button) as w:
                 w.setEnabled(op.GroundtruthSegmentation.ready())
             with silent_qobject(self.live_update_button) as w:
-                w.setChecked(not op.FreezeClassifier.value)
+                w.setChecked(ensure_bool(not op.FreezeClassifier.value))
             if op.FreezeClassifier.value:
                 self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
             else:

@@ -29,6 +29,7 @@ from qtpy.QtCore import Qt, QEvent
 from qtpy.QtGui import QColor
 
 from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui.qtcompat import ensure_int
 from volumina.api import createDataSource, ColortableLayer
 from volumina import colortables
 from volumina.utility import ShortcutManager
@@ -160,8 +161,8 @@ class BlockwiseObjectClassificationGui(LayerViewerGui):
     def _updateGuiFromOperator(self, *args):
         blockShapeDict = self.topLevelOperatorView.BlockShape3dDict.value
         for axiskey, spinBox in list(self._blockSpinBoxes.items()):
-            spinBox.setValue(blockShapeDict[axiskey])
+            spinBox.setValue(ensure_int(blockShapeDict[axiskey]))
 
         haloPaddingDict = self.topLevelOperatorView.HaloPadding3dDict.value
         for axiskey, spinBox in list(self._haloSpinBoxes.items()):
-            spinBox.setValue(haloPaddingDict[axiskey])
+            spinBox.setValue(ensure_int(haloPaddingDict[axiskey]))

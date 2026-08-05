@@ -15,7 +15,7 @@ from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.config import cfg as ilastik_config
-
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_float, ensure_int
 
 from lazyflow.request.request import Request
 
@@ -55,8 +55,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                 labels[i - 1].setVisible(False)
 
         # hide merger legend if selection < 2
-        self._drawer.label_4.setVisible(selection > 1)
-        labels[0].setVisible(selection > 1)
+        self._drawer.label_4.setVisible(ensure_bool(selection > 1))
+        labels[0].setVisible(ensure_bool(selection > 1))
 
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
@@ -69,41 +69,41 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         parameters = self.topLevelOperatorView.Parameters.value
         if "maxDist" in list(parameters.keys()):
-            self._drawer.maxDistBox.setValue(parameters["maxDist"])
+            self._drawer.maxDistBox.setValue(ensure_int(parameters["maxDist"]))
         if "maxObj" in list(parameters.keys()):
-            self._drawer.maxObjectsBox.setValue(parameters["maxObj"])
+            self._drawer.maxObjectsBox.setValue(ensure_int(parameters["maxObj"]))
         if "divThreshold" in list(parameters.keys()):
-            self._drawer.divThreshBox.setValue(parameters["divThreshold"])
+            self._drawer.divThreshBox.setValue(ensure_float(parameters["divThreshold"]))
         if "avgSize" in list(parameters.keys()):
-            self._drawer.avgSizeBox.setValue(parameters["avgSize"][0])
+            self._drawer.avgSizeBox.setValue(ensure_float(parameters["avgSize"][0]))
         if "withTracklets" in list(parameters.keys()):
-            self._drawer.trackletsBox.setChecked(parameters["withTracklets"])
+            self._drawer.trackletsBox.setChecked(ensure_bool(parameters["withTracklets"]))
         if "sizeDependent" in list(parameters.keys()):
-            self._drawer.sizeDepBox.setChecked(parameters["sizeDependent"])
+            self._drawer.sizeDepBox.setChecked(ensure_bool(parameters["sizeDependent"]))
         if "divWeight" in list(parameters.keys()):
-            self._drawer.divWeightBox.setValue(parameters["divWeight"])
+            self._drawer.divWeightBox.setValue(ensure_float(parameters["divWeight"]))
         if "transWeight" in list(parameters.keys()):
-            self._drawer.transWeightBox.setValue(parameters["transWeight"])
+            self._drawer.transWeightBox.setValue(ensure_float(parameters["transWeight"]))
         if "withDivisions" in list(parameters.keys()):
-            self._drawer.divisionsBox.setChecked(parameters["withDivisions"])
+            self._drawer.divisionsBox.setChecked(ensure_bool(parameters["withDivisions"]))
         if "withOpticalCorrection" in list(parameters.keys()):
-            self._drawer.opticalBox.setChecked(parameters["withOpticalCorrection"])
+            self._drawer.opticalBox.setChecked(ensure_bool(parameters["withOpticalCorrection"]))
         if "withClassifierPrior" in list(parameters.keys()):
-            self._drawer.classifierPriorBox.setChecked(parameters["withClassifierPrior"])
+            self._drawer.classifierPriorBox.setChecked(ensure_bool(parameters["withClassifierPrior"]))
         if "withMergerResolution" in list(parameters.keys()):
-            self._drawer.mergerResolutionBox.setChecked(parameters["withMergerResolution"])
+            self._drawer.mergerResolutionBox.setChecked(ensure_bool(parameters["withMergerResolution"]))
         if "borderAwareWidth" in list(parameters.keys()):
-            self._drawer.bordWidthBox.setValue(parameters["borderAwareWidth"])
+            self._drawer.bordWidthBox.setValue(ensure_int(parameters["borderAwareWidth"]))
         if "cplex_timeout" in list(parameters.keys()):
             self._drawer.timeoutBox.setText(str(parameters["cplex_timeout"]))
         if "appearanceCost" in list(parameters.keys()):
-            self._drawer.appearanceBox.setValue(parameters["appearanceCost"])
+            self._drawer.appearanceBox.setValue(ensure_int(parameters["appearanceCost"]))
         if "disappearanceCost" in list(parameters.keys()):
-            self._drawer.disappearanceBox.setValue(parameters["disappearanceCost"])
+            self._drawer.disappearanceBox.setValue(ensure_int(parameters["disappearanceCost"]))
         if "max_nearest_neighbors" in list(parameters.keys()):
-            self._drawer.maxNearestNeighborsSpinBox.setValue(parameters["max_nearest_neighbors"])
+            self._drawer.maxNearestNeighborsSpinBox.setValue(ensure_int(parameters["max_nearest_neighbors"]))
         if "numFramesPerSplit" in list(parameters.keys()):
-            self._drawer.numFramesPerSplitSpinBox.setValue(parameters["numFramesPerSplit"])
+            self._drawer.numFramesPerSplitSpinBox.setValue(ensure_int(parameters["numFramesPerSplit"]))
 
         # solver: use stored value only if that solver is available
         self._drawer.solverComboBox.clear()
@@ -117,7 +117,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._updateMaxObjectsBoxMaxValue()
 
         # Hide division GUI widgets
-        if "withAnimalTracking" in list(parameters.keys()) and parameters["withAnimalTracking"] == True:
+        if "withAnimalTracking" in list(parameters.keys()) and parameters["withAnimalTracking"]:
             self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
             self._drawer.divisionsBox.hide()
@@ -130,8 +130,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     def _updateMaxObjectsBoxMaxValue(self, *args, **kwargs):
         if self.topLevelOperatorView.NumLabels.ready():
             if self.topLevelOperatorView.NumLabels.value > 1:
-                self._drawer.maxObjectsBox.setMaximum(self.topLevelOperatorView.NumLabels.value - 1)
-                self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.NumLabels.value - 1)
+                self._drawer.maxObjectsBox.setMaximum(ensure_int(self.topLevelOperatorView.NumLabels.value) - 1)
+                self._drawer.maxObjectsBox.setValue(ensure_int(self.topLevelOperatorView.NumLabels.value) - 1)
                 self._drawer.TrackButton.setEnabled(True)
             else:
                 self._drawer.maxObjectsBox.setMaximum(0)
@@ -225,7 +225,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         maxBorder = min(maxx, maxy)
         if maxz != 0:
             maxBorder = min(maxBorder, maxz)
-        self._drawer.bordWidthBox.setRange(0, old_div(maxBorder, 2))
+        self._drawer.bordWidthBox.setRange(0, ensure_int(maxBorder // 2))
 
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
