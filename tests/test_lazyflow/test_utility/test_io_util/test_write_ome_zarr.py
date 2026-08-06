@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import List, Union, Iterable
 from unittest import mock
 
-from clearscale import Multiscale, BlueprintShapes
+import clearscale
 import numpy
 import pytest
 import vigra
@@ -33,7 +33,7 @@ def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
         (
             (21, 23, 3),
             "yxc",
-            BlueprintShapes(
+            clearscale.BlueprintShapes(
                 [
                     ("raw", tagged_shape("tczyx", (1, 3, 1, 21, 23))),
                     ("scaled", tagged_shape("tczyx", (1, 3, 1, 10, 12))),
@@ -43,7 +43,7 @@ def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
         (
             (21, 23, 3),
             "yxc",
-            BlueprintShapes({"s0": tagged_shape("tczyx", (1, 3, 1, 10, 12))}),
+            clearscale.BlueprintShapes({"s0": tagged_shape("tczyx", (1, 3, 1, 10, 12))}),
         ),
     ],
 )
@@ -161,7 +161,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
             "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
         },  # offset * input scale + source scale translation
     ]
-    source_op.Output.meta.scales = Multiscale.from_ome_zarr(
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -231,15 +231,15 @@ def test_resized_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
     progress = mock.Mock()
     input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
     # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    input_scales = Multiscale.from_shapes(
-        BlueprintShapes(
+    input_scales = clearscale.Multiscale.from_shapes(
+        dict(
             [
                 ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
                 ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
             ]
         )
     )
-    target_scales = BlueprintShapes({"resized_scale": tagged_shape("tczyx", (2, 2, 10, 10, 10))})
+    target_scales = clearscale.BlueprintShapes({"resized_scale": tagged_shape("tczyx", (2, 2, 10, 10, 10))})
     source_op.Output.meta.scales = input_scales
     source_op.Output.meta.active_scale = "downscale"
     source_op.Output.meta.axistags.setResolution("t", 1.0)
@@ -271,8 +271,8 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = Multiscale.from_shapes(
-        BlueprintShapes({"source_scale": source_op.Output.meta.getTaggedShape()})
+    source_op.Output.meta.scales = clearscale.Multiscale.from_shapes(
+        clearscale.BlueprintShapes({"source_scale": source_op.Output.meta.getTaggedShape()})
     )
     source_op.Output.meta.active_scale = "source_scale"
     # Both Precomputed and OME-Zarr readers would read the pixel size of the source scale from the source metadata.
@@ -286,7 +286,7 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     # The export image is (2,2,5,5,5), (simulating a 0,_,3,3,3 crop of source_scale),
     # so downscale and upscale shapes here need to be relative to that shape.
     # Also make up-scaling factors anisotropic and non-integer for good measure.
-    target_scales = BlueprintShapes(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -337,7 +337,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    source_op.Output.meta.scales = Multiscale.from_ome_zarr(
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -379,7 +379,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
         },
         shape_source=lambda path: (2, 5, 5, 5),
     )
-    target_scales = BlueprintShapes(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -435,7 +435,7 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    target_scales = BlueprintShapes(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("0", tagged_shape("tczyx", (2, 2, 5, 5, 5))),
             ("1", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -517,8 +517,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
     [
         (  # Simple: match input scales in OME-Zarr order
             tagged_shape("yx", (1, 1)),
-            Multiscale.from_shapes(
-                BlueprintShapes([("s0", tagged_shape("yx", (2, 2))), ("source_scale", tagged_shape("yx", (1, 1)))])
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("yx", (2, 2))), ("source_scale", tagged_shape("yx", (1, 1)))])
             ),
             OrderedDict(
                 [
@@ -529,10 +529,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Input no channels + default scaling would create different scales than input has
             tagged_shape("yxc", (500, 500, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
-                    [("s0", tagged_shape("yx", (1100, 1100))), ("source_scale", tagged_shape("yx", (500, 500)))]
-                ),
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("yx", (1100, 1100))), ("source_scale", tagged_shape("yx", (500, 500)))]),
             ),
             OrderedDict(
                 [
@@ -543,10 +541,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Different number of channels in in put and export; input downscale was ceil-rounded (i.e. not like ilastik does)
             tagged_shape("yxc", (500, 500, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
-                    [("s0", tagged_shape("cyx", (2, 999, 999))), ("source_scale", tagged_shape("cyx", (2, 500, 500)))]
-                )
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("cyx", (2, 999, 999))), ("source_scale", tagged_shape("cyx", (2, 500, 500)))])
             ),
             OrderedDict(
                 [
@@ -557,8 +553,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Default scaling would not scale the input + export is cropped + source is middle scale
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("0", tagged_shape("czyx", (2, 75, 75, 75))),
                         ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
@@ -579,8 +575,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
             # OpResize refuses to scale along t, so all output scales need to be identical.
             # Note that OME-Zarr allows identical shapes at different scales.
             tagged_shape("tyxc", (5, 25, 25, 2)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("0", tagged_shape("cyxt", (3, 25, 25, 32))),
                         ("source_scale", tagged_shape("cyxt", (3, 25, 25, 11))),
@@ -608,8 +604,8 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
     [
         (  # Simple: match input scales in original order, even if ilastik default would not downscale
             tagged_shape("yx", (4, 4)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("source_scale", tagged_shape("yx", (4, 4))),
                         ("s2", tagged_shape("yx", (2, 2))),
@@ -627,15 +623,13 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Input had no channels + ilastik default _would_ downscale
             tagged_shape("yxc", (1000, 1000, 3)),
-            Multiscale.from_shapes(BlueprintShapes([("source_scale", tagged_shape("yx", (1000, 1000)))])),
+            clearscale.Multiscale.from_shapes(dict([("source_scale", tagged_shape("yx", (1000, 1000)))])),
             OrderedDict([("source_scale", tagged_shape("tczyx", (1, 3, 1, 1000, 1000)))]),
         ),
         (  # Different number of channels in input and export; input downscale was ceil-rounded (i.e. not like ilastik does)
             tagged_shape("yxc", (531, 531, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
-                    [("source_scale", tagged_shape("cyx", (2, 531, 531))), ("s2", tagged_shape("cyx", (2, 266, 266)))]
-                )
+            clearscale.Multiscale.from_shapes(
+                dict([("source_scale", tagged_shape("cyx", (2, 531, 531))), ("s2", tagged_shape("cyx", (2, 266, 266)))])
             ),
             OrderedDict(
                 [
@@ -646,8 +640,8 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped + source is middle scale (upscales should be excluded)
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("0", tagged_shape("czyx", (2, 225, 225, 225))),
                         ("1", tagged_shape("czyx", (2, 75, 75, 75))),
@@ -665,8 +659,8 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped + input has no channels
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("source_scale", tagged_shape("zyx", (25, 25, 25))),
                         ("4", tagged_shape("zyx", (8, 8, 8))),
@@ -682,8 +676,8 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped tiny (matching all downscales would lead to 0 shapes) + makes an axis singleton
             tagged_shape("zyxc", (19, 7, 1, 3)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("0", tagged_shape("czyx", (2, 225, 225, 225))),
                         ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
@@ -702,8 +696,8 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export cropped to 1px
             tagged_shape("zyxc", (1, 1, 1, 2)),
-            Multiscale.from_shapes(
-                BlueprintShapes(
+            clearscale.Multiscale.from_shapes(
+                dict(
                     [
                         ("0", tagged_shape("czyx", (2, 225, 225, 225))),
                         ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),

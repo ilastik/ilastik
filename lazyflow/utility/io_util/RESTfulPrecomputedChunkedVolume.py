@@ -22,7 +22,7 @@
 import json
 import logging
 
-from clearscale import Multiscale
+import clearscale
 import jsonschema
 import numpy
 import requests
@@ -106,7 +106,7 @@ class RESTfulPrecomputedChunkedVolume(MultiscaleStore):
             uri=volume_url,
             dtype=dtype,
             axistags=axistags,
-            multiscale=Multiscale.from_precomputed(self._json_info),
+            multiscale=clearscale.Multiscale.from_precomputed(self._json_info),
             lowest_resolution_key=lowest_resolution_key,
             highest_resolution_key=highest_resolution_key,
         )

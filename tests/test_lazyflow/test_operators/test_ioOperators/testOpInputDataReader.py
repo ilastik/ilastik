@@ -32,7 +32,7 @@ import h5py
 import pytest
 import zarr
 
-from clearscale import Multiscale
+import clearscale
 from typing import Tuple, List
 from PIL import Image
 
@@ -309,7 +309,9 @@ class TestOpInputDataReaderWithOMEZarr:
             ("some.zarr/A/1/0", "s0", "s1"),  # well (./row/column/field-of-view/scales)
         ],
     )
-    def ome_zarr_store_on_disc(self, tmp_path, request, monkeypatch) -> Tuple[PathTuple, List[numpy.array], Multiscale]:
+    def ome_zarr_store_on_disc(
+        self, tmp_path, request, monkeypatch
+    ) -> Tuple[PathTuple, List[numpy.array], clearscale.Multiscale]:
         """Sets up a zarr store of a random image at raw scale and a downscale.
         Returns dataset paths, datasets, and the metadata expected on the
         reader's output slot."""
@@ -380,7 +382,7 @@ class TestOpInputDataReaderWithOMEZarr:
         )
 
         expected_images = [image_original, image_scaled]
-        expected_multiscale = Multiscale.from_ome_zarr(
+        expected_multiscale = clearscale.Multiscale.from_ome_zarr(
             correct_multiscale_zattrs,
             shape_source=lambda path: tuple({path0: dataset_shape, path1: scaled_shape}[path]),
         )

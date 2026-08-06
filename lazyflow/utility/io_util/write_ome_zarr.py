@@ -24,16 +24,7 @@ from functools import partial
 from pathlib import Path
 from typing import List, Dict, Optional, Union, Mapping
 
-from clearscale import (
-    PixelSize,
-    Shape,
-    Translation,
-    PixelOffset,
-    BlueprintShapes,
-    Scale,
-    Unit,
-    Multiscale,
-)
+import clearscale
 import numpy
 import zarr
 from zarr.storage import FSStore
@@ -57,8 +48,8 @@ SINGE_SCALE_DEFAULT_KEY = "s0"
 
 
 def match_target_scales_to_input_excluding_upscales(
-    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
-) -> BlueprintShapes:
+    export_shape: TaggedShape, input_scales: clearscale.Multiscale, input_key: str
+) -> clearscale.BlueprintShapes:
     """We assume people don't generally want to upscale lower-resolution segmentations to raw scale."""
     # Since input_scales is ordered largest-to-smallest, simply drop matching scales before input_key.
     all_matching_scales = _match_target_scales_to_input(export_shape, input_scales, input_key)
@@ -66,37 +57,39 @@ def match_target_scales_to_input_excluding_upscales(
 
 
 def _match_target_scales_to_input(
-    export_shape: TaggedShape, input_scales: Multiscale, input_key: str
-) -> BlueprintShapes:
+    export_shape: TaggedShape, input_scales: clearscale.Multiscale, input_key: str
+) -> clearscale.BlueprintShapes:
     source_scale_shape = input_scales[input_key].shape
     if source_scale_shape.matches(export_shape, only=SPATIAL_AXES):
         # Unmodified source shape - reproduce exact multiscale shapes
-        shapes = BlueprintShapes.from_multiscale(input_scales)
+        shapes = clearscale.BlueprintShapes.from_multiscale(input_scales)
     else:
 
-        def two_spatials_or_is_input(scale: str, shape: Shape):
+        def two_spatials_or_is_input(scale: str, shape: clearscale.Shape):
             remaining_spatial = len(shape.non_singleton_axes(SPATIAL_AXES))
             return remaining_spatial > 1 or scale == input_key
 
-        shapes = BlueprintShapes.from_multiscale_rescaled(
+        shapes = clearscale.BlueprintShapes.from_multiscale_rescaled(
             input_scales, target_shape=export_shape, source_key=input_key, scaled_axes=SPATIAL_AXES, rounding="floor"
         ).filter_items(two_spatials_or_is_input)
 
     return shapes.with_axes(OME_ZARR_AXES).with_sizes(export_shape, only_axes="tc")
 
 
-def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> BlueprintShapes:
+def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> clearscale.BlueprintShapes:
     """
     Default target scales are isotropic 2x downscaling along x, y and z if present.
     The smallest scale included is just small enough for the entire image to fit into one chunk (per t and c).
     """
-    unscaled = Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
+    unscaled = clearscale.Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
     chunk_shape = _get_chunk_shape(unscaled, dtype)
-    shapes = BlueprintShapes.downscale_powers_of_2_xyz(base_shape=unscaled, shape_limit=chunk_shape, rounding="floor")
+    shapes = clearscale.BlueprintShapes.downscale_powers_of_2_xyz(
+        base_shape=unscaled, shape_limit=chunk_shape, rounding="floor"
+    )
     return shapes
 
 
-def _get_chunk_shape(tagged_image_shape: Shape, dtype) -> Shape:
+def _get_chunk_shape(tagged_image_shape: clearscale.Shape, dtype) -> clearscale.Shape:
     """Determine chunk shape for OME-Zarr storage. 1 for t and c,
     ilastik default rules for zyx, with a max of 1MB uncompressed per chunk.
     This results in (y: 506 x: 505) for 32-bit 2D and (z: 63 y: 64 x: 63) for 32-bit 3D."""
@@ -106,14 +99,14 @@ def _get_chunk_shape(tagged_image_shape: Shape, dtype) -> Shape:
     dtype_bytes = dtype().nbytes
     tagged_maxshape = tagged_image_shape.with_ones("tc")
     chunk_shape: ShapeTuple = determineBlockShape(tagged_maxshape.to_list(), target_max_size / dtype_bytes)
-    return Shape(zip(tagged_maxshape.keys(), chunk_shape))
+    return clearscale.Shape(zip(tagged_maxshape.keys(), chunk_shape))
 
 
 def _create_empty_zarray(
     abs_export_path: str,
     scale_key: str,
-    scale_shape: Shape,
-    chunk_shape: Shape,
+    scale_shape: clearscale.Shape,
+    chunk_shape: clearscale.Shape,
     export_dtype,
 ) -> zarr.Array:
     """Creates folders and zarr-internal (not OME) metadata files."""
@@ -141,7 +134,9 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
         za.attrs["drange"] = ilastik_meta["drange"]
 
 
-def _get_scaling_method_metadata(export_blueprint: BlueprintShapes, interpolation_order: int) -> Optional[Dict]:
+def _get_scaling_method_metadata(
+    export_blueprint: clearscale.BlueprintShapes, interpolation_order: int
+) -> Optional[Dict]:
     if not export_blueprint.scaled_axes():
         return None
     metadata = {
@@ -155,27 +150,27 @@ def _get_scaling_method_metadata(export_blueprint: BlueprintShapes, interpolatio
 
 def _write_ome_zarr_and_ilastik_metadata(
     abs_export_path: str,
-    export_shape: Shape,
-    export_blueprint: BlueprintShapes,
+    export_shape: clearscale.Shape,
+    export_blueprint: clearscale.BlueprintShapes,
     interpolation_order: int,
-    export_offset: Optional[PixelOffset],
-    input_scale: Optional[Scale],
+    export_offset: Optional[clearscale.PixelOffset],
+    input_scale: Optional[clearscale.Scale],
     ilastik_meta: Dict,
 ):
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
-    export_pixel_size = PixelSize.from_vigra(ilastik_meta["axistags"])
+    export_pixel_size = clearscale.PixelSize.from_vigra(ilastik_meta["axistags"])
     axes = list(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
-        export_unit = Unit(ilastik_meta["axis_units"]).with_axes(axes)
+        export_unit = clearscale.Unit(ilastik_meta["axis_units"]).with_axes(axes)
     else:
-        export_unit = Unit.empty(axes)
+        export_unit = clearscale.Unit.empty(axes)
 
-    input_translation = input_scale.translation if input_scale else Translation.identity(axes)
+    input_translation = input_scale.translation if input_scale else clearscale.Translation.identity(axes)
     export_translation = input_translation.with_axes(axes)
     if export_offset:
         export_translation += export_offset.with_axes(axes).to_physical(export_pixel_size)
 
-    export_scale = Scale(export_shape, export_pixel_size, export_unit, export_translation)
+    export_scale = clearscale.Scale(export_shape, export_pixel_size, export_unit, export_translation)
     multiscale = export_blueprint.apply_to_scale(export_scale)
     ome_zarr_multiscale_meta = multiscale.to_ome_zarr(version="0.4", axis_types="infer")
 
@@ -211,7 +206,9 @@ def write_ome_zarr(
             "Appending to an existing OME-Zarr store is not yet implemented."
             f"\nPath: {abs_export_path}."
         )
-    export_offset = PixelOffset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
+    export_offset = (
+        clearscale.PixelOffset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
+    )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
     ops_to_clean = [op_reorder]
@@ -219,7 +216,7 @@ def write_ome_zarr(
         op_reorder.Input.connect(image_source_slot)
         reordered_source = op_reorder.Output
         progress_signal(25)
-        export_shape = Shape(reordered_source.meta.getTaggedShape())
+        export_shape = clearscale.Shape(reordered_source.meta.getTaggedShape())
         export_dtype = reordered_source.meta.dtype
         input_scale_key = reordered_source.meta.get("active_scale")
         input_multiscale = reordered_source.meta.get("scales")
@@ -230,11 +227,11 @@ def write_ome_zarr(
 
         if target_scales is None:  # single-scale export
             single_target_key = input_scale_key if input_scale_key else SINGE_SCALE_DEFAULT_KEY
-            target_scales = BlueprintShapes({single_target_key: export_shape})
+            target_scales = clearscale.BlueprintShapes({single_target_key: export_shape})
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_blueprint = BlueprintShapes(target_scales).with_axes(export_shape)
+        export_blueprint = clearscale.BlueprintShapes(target_scales).with_axes(export_shape)
         export_scalings = export_blueprint.to_factors(export_shape)
         combined_scaling_mag = {key: factor.magnitude() for key, factor in export_scalings.items()}
 

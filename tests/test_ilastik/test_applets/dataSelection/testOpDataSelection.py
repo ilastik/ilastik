@@ -26,7 +26,7 @@ from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
-from clearscale import Multiscale
+import clearscale
 import numpy
 import requests
 import vigra
@@ -885,7 +885,7 @@ class TestOpDataSelection_PrecomputedChunks:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == Multiscale.from_precomputed(self.INFO_JSON)
+        assert op.Image.meta.scales == clearscale.Multiscale.from_precomputed(self.INFO_JSON)
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
         scale_keys = list(op.Image.meta.scales.keys())
@@ -1033,7 +1033,7 @@ class TestOpDataSelection_OMEZarr:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == Multiscale.from_ome_zarr(
+        assert op.Image.meta.scales == clearscale.Multiscale.from_ome_zarr(
             self.ZATTRS["multiscales"][0],
             shape_source=lambda path: {"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX}[path],
         )
