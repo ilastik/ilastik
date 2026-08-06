@@ -21,7 +21,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Tuple
 
-from clearscale import Multiscale
+import clearscale
 import numpy
 import vigra
 
@@ -30,7 +30,7 @@ from lazyflow.slot import OutputSlot
 DEFAULT_SCALE_KEY = ""
 
 
-def set_multiscale_meta(slot: OutputSlot, multiscale: Multiscale, active_scale_key: str):
+def set_multiscale_meta(slot: OutputSlot, multiscale: clearscale.Multiscale, active_scale_key: str):
     """Updates slot.meta with multiscale, and pixel size for active scale."""
     assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
     assert slot.meta.axistags is not None, "multiscale can not be used to update slot metadata missing axistags."
@@ -58,7 +58,7 @@ class MultiscaleStore(metaclass=ABCMeta):
         uri: str,
         dtype: numpy.dtype,
         axistags: vigra.AxisTags,
-        multiscale: Multiscale,
+        multiscale: clearscale.Multiscale,
         lowest_resolution_key: str,
         highest_resolution_key: str,
     ):

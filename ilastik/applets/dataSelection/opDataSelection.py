@@ -31,6 +31,7 @@ from numbers import Number
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional, Union, Callable, Set
 
+import clearscale
 import h5py
 import numpy
 import vigra
@@ -52,7 +53,7 @@ from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
 
@@ -104,7 +105,7 @@ class DatasetInfo(ABC):
         laneDtype: type,
         default_tags: AxisTags,  # inferred from dataset or another data lane
         axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
-        scales: Multiscale = None,
+        scales: clearscale.Multiscale = None,
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         display_mode: str = "default",

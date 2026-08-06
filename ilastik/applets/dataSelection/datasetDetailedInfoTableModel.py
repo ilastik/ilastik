@@ -23,7 +23,7 @@ from collections import OrderedDict
 from functools import reduce
 from typing import List, Set
 
-from clearscale import Scale, Multiscale, Shape as ClearscaleShape
+import clearscale
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
@@ -43,7 +43,7 @@ class DatasetColumn:
     NumColumns = 7
 
 
-def _dims_to_display_string(scale: Scale, dtype: type) -> str:
+def _dims_to_display_string(scale: clearscale.Scale, dtype: type) -> str:
     """Generate labels to put into the scale combobox / to display in the table.
     Aim: XYZ dimensions + data size, but in original axis order"""
     xyz_shape = scale.shape.without_axes_except("xyz").to_list()
@@ -282,23 +282,23 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         Return indices of the options from `get_scale_options` that have matching scales in all other roles.
         """
 
-        def shapes_intersection(shapes1: Set[ClearscaleShape], shapes2: Set[ClearscaleShape]):
+        def shapes_intersection(shapes1: Set[clearscale.Shape], shapes2: Set[clearscale.Shape]):
             return {s1 for s1 in shapes1 if any(eq_shapes(s1, s2) for s2 in shapes2)}
 
         # Checking if ready etc. shouldn't be necessary here because this should only be called
         # while building the scale dropdown (by which point everything should be ready).
-        scale_shapes_per_role: List[Set[ClearscaleShape]] = [
+        scale_shapes_per_role: List[Set[clearscale.Shape]] = [
             (
                 set(role_slot.value.scales.keys_by_shape)
                 if role_slot.value.scales
-                else {ClearscaleShape(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))}
+                else {clearscale.Shape(zip(role_slot.value.axistags.keys(), role_slot.value.laneShape))}
             )
             for role_slot in self._op.DatasetGroupOut[laneIndex]
             if role_slot.ready()
         ]
         common_scale_shapes = reduce(shapes_intersection, scale_shapes_per_role)
 
-        scale_options: Multiscale = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
+        scale_options: clearscale.Multiscale = self._op.DatasetGroupOut[laneIndex][self._roleIndex].value.scales
         indices_of_common_scales = []
         for i, scale in enumerate(reversed(scale_options.values())):
             if any(eq_shapes(scale.shape, common_shape) for common_shape in common_scale_shapes):
