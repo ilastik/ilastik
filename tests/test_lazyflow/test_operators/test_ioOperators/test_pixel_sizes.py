@@ -5,9 +5,8 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Dict, List, Tuple, Union
 from unittest import mock
-from unittest.mock import ANY
 
-from clearscale import Scale, BlueprintShapes, PixelSize, Unit
+import clearscale
 import h5py
 import numpy as np
 import pytest
@@ -837,7 +836,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     progress = mock.Mock()
     target_shape_up = OrderedDict(zip("tczyx", (6, 2, 16, 15, 13)))  # ome-zarr standard
     target_shape_down = OrderedDict(zip("tczyx", (6, 2, 3, 2, 3)))
-    target_scales = BlueprintShapes([("upscale", target_shape_up), ("downscale", target_shape_down)])
+    target_scales = clearscale.BlueprintShapes([("upscale", target_shape_up), ("downscale", target_shape_down)])
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None, target_scales)
 
@@ -847,11 +846,11 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     assert "axis_units" in reader.Output.meta
     assert reader.Output.meta.axis_units == dict(zip(axes, units))
     assert reader.Output.meta.getAxisKeys() == list("tczyx")
-    assert reader.Output.meta.scales == BlueprintShapes(target_scales).apply_to_scale(
-        Scale(
+    assert reader.Output.meta.scales == clearscale.BlueprintShapes(target_scales).apply_to_scale(
+        clearscale.Scale(
             shape=op_data.Output.meta.getTaggedShape(),
-            pixel_size=PixelSize.from_vigra(op_data.Output.meta.axistags),
-            unit=Unit(op_data.Output.meta.axis_units),
+            pixel_size=clearscale.PixelSize.from_vigra(op_data.Output.meta.axistags),
+            unit=clearscale.Unit(op_data.Output.meta.axis_units),
         ).with_axes("tczyx")
     )
     for tag in reader.Output.meta.axistags:
