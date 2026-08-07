@@ -66,6 +66,11 @@ class CantSaveAsRelativePathsException(Exception):
         super().__init__(f"Can't represent {file_path} relative to {base_dir}")
 
 
+class IsMultiscaleException(Exception):
+    def __init__(self):
+        super().__init__("File must be handled as multiscale URL")
+
+
 class InconsistentAxisMetaException(Exception):
     def __init__(self, axistags: AxisTags, shape):
         if len(axistags) > len(shape):
@@ -708,6 +713,8 @@ class FilesystemDatasetInfo(DatasetInfo):
         )
         meta = op_reader.Output.meta.copy()
         op_reader.cleanUp()
+        if meta.scales:
+            raise IsMultiscaleException()
         super().__init__(
             default_tags=meta.axistags,
             nickname=nickname or self.create_nickname(self.expanded_paths),
@@ -807,11 +814,19 @@ class RelativeFilesystemDatasetInfo(FilesystemDatasetInfo):
             raise CantSaveAsRelativePathsException(self.filePath, self.base_dir)
 
     @classmethod
-    def create_or_fallback_to_absolute(cls, *args, **kwargs):
+    def create_or_dispatch(cls, *args, **kwargs):
         try:
             return cls(*args, **kwargs)
         except CantSaveAsRelativePathsException:
             return FilesystemDatasetInfo(*args, **kwargs)
+        except IsMultiscaleException as e:
+            if "filePath" not in kwargs:
+                raise e
+            # DatasetInfo.__init__ doesn't like "filePath" and "sequence_axis"
+            acceptable_multiscale_kwargs = ("axistags", "project_file", "axistags")
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k in acceptable_multiscale_kwargs}
+            url = Path(kwargs["filePath"]).as_uri()
+            return MultiscaleUrlDatasetInfo(url=url, **filtered_kwargs)
 
     @property
     def display_string(self):

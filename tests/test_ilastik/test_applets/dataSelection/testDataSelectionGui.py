@@ -6,12 +6,18 @@ import platform
 from typing import Tuple, List
 from unittest import mock
 
+import numpy
 import pytest
+import vigra
 from qtpy.QtGui import QStandardItemModel, QStandardItem
 from qtpy.QtWidgets import QComboBox, QMessageBox
 
+from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.datasetDetailedInfoTableModel import DatasetColumn
 from ilastik.applets.dataSelection.datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from ilastik.applets.dataSelection.opDataSelection import MultiscaleUrlDatasetInfo
+from lazyflow.operator import Operator
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 CI = os.environ.get("GITHUB_ACTIONS") or os.environ.get("APPVEYOR") or os.environ.get("ON_CIRCLE_CI")
 MAC = platform.system().lower() == "darwin"
@@ -209,3 +215,45 @@ def test_scale_select_disables_scale_options_not_available_in_other_roles(
                 lane,
                 str(enabled),
             ), f"scale option index {enabled} was supposed to be available"
+
+
+@pytest.fixture
+def data_selection_applet(tmp_path, graph):
+    workflow = Operator(graph=graph)
+    workflow.shell = mock.Mock()
+    workflow.handleNewLanesAdded = mock.Mock()
+
+    applet = DataSelectionApplet(workflow, "Input Data", "Input Data")
+    applet.topLevelOperator.DatasetRoles.setValue(["Raw Data"])
+    applet.topLevelOperator.WorkingDirectory.setValue(tmp_path)
+    return applet
+
+
+def test_add_files_adds_ome_zarr_as_multiscale_dataset(monkeypatch, graph, tmp_path, data_selection_applet):
+    ome_zarr_path = tmp_path / "test.ome.zarr"
+    ome_zarr_path.mkdir()
+    truthy_mock_scales = {"scale_key": object()}
+
+    def make_piper(*_args, parent=None, local_graph=graph, **_kwargs):
+        reader = OpArrayPiper(parent=parent, graph=local_graph)
+        reader.Input.setValue(numpy.zeros((3, 25, 25)))
+        reader.Output.meta.axistags = vigra.defaultAxistags("zyx")
+        reader.Output.meta.scales = truthy_mock_scales
+        return reader
+
+    monkeypatch.setattr("ilastik.applets.dataSelection.opDataSelection.OpInputDataReader", make_piper)
+    monkeypatch.setattr(QMessageBox, "critical", lambda *args: None)
+
+    monkeypatch.setattr(
+        "ilastik.applets.dataSelection.dataSelectionGui.ImageFileDialog.getSelectedPaths",
+        mock.Mock(return_value=[ome_zarr_path]),
+    )
+
+    gui = data_selection_applet.getMultiLaneGui()
+    gui.addFiles(roleIndex=0)
+    assert data_selection_applet.num_lanes == 1, "test setup failed - did not load dataset"
+
+    dataset_info = data_selection_applet.get_lane(0).get_dataset_info("Raw Data")
+
+    assert isinstance(dataset_info, MultiscaleUrlDatasetInfo), "datasets that load .scales should reroute to multiscale"
+    assert dataset_info.scales == truthy_mock_scales
