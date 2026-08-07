@@ -192,7 +192,7 @@ class OpWsdt(Operator):
             self.debug_results.clear()
 
         # distance_transform_watershed expects a default value of None for pixel_pitch.
-        if self.PixelPitch.value == []:
+        if len(self.PixelPitch.value) == 0:
             pixel_pitch_to_pass = None
         else:
             pixel_pitch_to_pass = self.PixelPitch.value
