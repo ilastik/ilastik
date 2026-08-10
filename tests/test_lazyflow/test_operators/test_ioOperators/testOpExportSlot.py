@@ -139,7 +139,7 @@ class TestOpExportSlot(object):
         assert Path(opExport.ExportPath.value) == expected_export_path
 
         assert opExport.TargetScales.ready()
-        expected_scales: multiscaleStore.Multiscale = OrderedDict(
+        expected_scales = OrderedDict(
             {
                 "s0": OrderedDict(zip("tczyx", (1, 1, 1, 550, 510))),
                 "s1": OrderedDict(zip("tczyx", (1, 1, 1, 275, 255))),
