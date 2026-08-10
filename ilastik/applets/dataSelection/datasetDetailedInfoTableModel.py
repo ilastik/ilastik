@@ -21,7 +21,7 @@
 
 from collections import OrderedDict
 from functools import reduce
-from typing import List, Set
+from typing import List, Set, Type, TYPE_CHECKING
 
 import clearscale
 from qtpy.QtCore import Qt, QAbstractItemModel, QModelIndex
@@ -30,6 +30,9 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.helpers import bigintprod, eq_shapes
 from .opDataSelection import DatasetInfo
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
+
+if TYPE_CHECKING:
+    import numpy
 
 
 class DatasetColumn:
@@ -43,7 +46,7 @@ class DatasetColumn:
     NumColumns = 7
 
 
-def _dims_to_display_string(scale: clearscale.Scale, dtype: type) -> str:
+def _dims_to_display_string(scale: clearscale.Scale, dtype: Type["numpy.number"]) -> str:
     """Generate labels to put into the scale combobox / to display in the table.
     Aim: XYZ dimensions + data size, but in original axis order"""
     xyz_shape = scale.shape.without_axes_except("xyz").to_list()
