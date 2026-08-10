@@ -32,6 +32,7 @@ from zarr.storage import FSStore
 from ilastik import __version__ as ilastik_version
 from lazyflow import USER_LOGLEVEL
 from lazyflow.base import SPATIAL_AXES, Axiskey, Shape as ShapeTuple, TaggedShape
+from lazyflow.operator import Operator
 from lazyflow.operators import OpReorderAxes
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opResize import OpResize
@@ -191,15 +192,15 @@ def write_ome_zarr(
     export_path: str,
     image_source_slot: Slot,
     progress_signal: OrderedSignal,
-    export_offset: Union[ShapeTuple, None],
-    target_scales: Optional[Mapping[str, Mapping[str, int]]] = None,
+    export_offset_raw: Union[ShapeTuple, None],
+    target_scales: Optional[clearscale.BlueprintShapes] = None,
 ):
     pc = PathComponents(export_path)
     if pc.internalPath:
         raise ValueError(
             f'Internal paths are not supported by OME-Zarr export. Received internal path: "{pc.internalPath}"'
         )
-    abs_export_path = pc.externalPath
+    abs_export_path = str(pc.externalPath)
     if Path(abs_export_path).exists():
         raise FileExistsError(
             "Aborting because export path already exists. Please delete it manually if you intended to overwrite it. "
@@ -207,11 +208,13 @@ def write_ome_zarr(
             f"\nPath: {abs_export_path}."
         )
     export_offset = (
-        clearscale.PixelOffset(zip(image_source_slot.meta.getAxisKeys(), export_offset)) if export_offset else None
+        clearscale.PixelOffset(zip(image_source_slot.meta.getAxisKeys(), export_offset_raw))
+        if export_offset_raw
+        else None
     )
     op_reorder = OpReorderAxes(parent=image_source_slot.operator)
     op_reorder.AxisOrder.setValue("".join(OME_ZARR_AXES))
-    ops_to_clean = [op_reorder]
+    ops_to_clean: List[Operator] = [op_reorder]
     try:
         op_reorder.Input.connect(image_source_slot)
         reordered_source = op_reorder.Output
@@ -231,7 +234,7 @@ def write_ome_zarr(
 
         chunk_shape = _get_chunk_shape(export_shape, export_dtype)
 
-        export_blueprint = clearscale.BlueprintShapes(target_scales).with_axes(export_shape)
+        export_blueprint = target_scales.with_axes(export_shape)
         export_scalings = export_blueprint.to_factors(export_shape)
         combined_scaling_mag = {key: factor.magnitude() for key, factor in export_scalings.items()}
 
