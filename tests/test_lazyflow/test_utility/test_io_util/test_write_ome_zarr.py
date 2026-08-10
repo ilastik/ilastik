@@ -136,9 +136,8 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
 
 def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
     """If the source slot has OME-Zarr metadata, single-scale export should match
-    the input scale name. multiscale["coordinateTransformations"] should report scale for t-axis only
-    and translation being offset * resolution. dataset["coordinateTransformations"] should report scale
-    for xyz (scaling axes in the input) and copy translation from input ome metadata unmodified."""
+    the input scale name and combine export offset with pixel size and source translation.
+    It should *not* reuse source `scale`; the slot meta is authoritative for pixel size."""
     export_path = tmp_path / "test_multi_to_single.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
@@ -146,20 +145,21 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     export_offset = (0, 0, 4, 4, 4)
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
-    resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
     units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
     source_op.Output.meta.axistags.setResolution("t", resolution_t)
     source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
     expected_source_scale_transform = [
         {"type": "scale", "scale": [resolution_t, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
         {
             "type": "translation",
             "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
-        },  # offset * input scale + source scale translation
+        },  # offset * pixel size + source scale translation
     ]
     source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
@@ -182,7 +182,9 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 {
                     "path": "source_scale",
                     "coordinateTransformations": [
-                        # Bad metadata: Ensure it's not copied
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # The slot meta above would have been obtained from [0.1, 2.0, 2.0, 2.0] here.
+                        # The export should use the slot meta; inject nonsense here to enforce it's not reused.
                         {"type": "scale", "scale": [2.4, 1.3, 3.7, 6.9]},
                         {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
                     ],
@@ -196,11 +198,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 },
             ],
         },
-        shape_source=lambda path: {
-            "raw_scale": (2, 17, 17, 17),
-            "source_scale": (2, 9, 9, 9),
-            "downscale": (2, 5, 5, 5),
-        }[path],
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
     )
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
@@ -224,29 +222,18 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
 
 
 def test_resized_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
-    """If the source slot has scale metadata, but the export is a single resized scale,
-    the scale key should be as specified as target; factors should be source resolution * resizing factor."""
+    """If the export is a single resized scale, the scale key should be as specified target;
+    `scale` should be source resolution * resizing factor.
+    Input `.scales` meta is irrelevant for this now that pixel size goes via axistags."""
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
-    # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    input_scales = clearscale.Multiscale.from_shapes(
-        dict(
-            [
-                ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
-                ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
-            ]
-        )
-    )
     target_scales = clearscale.BlueprintShapes({"resized_scale": tagged_shape("tczyx", (2, 2, 10, 10, 10))})
-    source_op.Output.meta.scales = input_scales
-    source_op.Output.meta.active_scale = "downscale"
     source_op.Output.meta.axistags.setResolution("t", 1.0)
-    source_op.Output.meta.axistags.setResolution("z", 3.0)  # Reader would have determined that 15/5 = 3
+    source_op.Output.meta.axistags.setResolution("z", 3.0)
     source_op.Output.meta.axistags.setResolution("y", 3.0)
     source_op.Output.meta.axistags.setResolution("x", 3.0)
-    # Output is 10/5 upscaling of the source "downscale", so output scale is 3 / (10/5)
+    # Output is 10/5 upscaling of the (2, 2, 5, 5, 5) source array, so output scale is 3.0 / (10/5)
     expected_output_transform = [{"type": "scale", "scale": [1.0, 1.0, 1.5, 1.5, 1.5]}]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, None, target_scales)

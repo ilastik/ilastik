@@ -1035,7 +1035,7 @@ class TestOpDataSelection_OMEZarr:
 
         assert op.Image.meta.scales == clearscale.Multiscale.from_ome_zarr(
             self.ZATTRS["multiscales"][0],
-            shape_source=lambda path: {"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX}[path],
+            shape_source={"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX},
         )
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
