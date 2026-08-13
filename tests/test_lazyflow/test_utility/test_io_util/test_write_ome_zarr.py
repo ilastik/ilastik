@@ -134,10 +134,7 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
 
 
-def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
-    """If the source slot has OME-Zarr metadata, single-scale export should match
-    the input scale name and combine export offset with pixel size and source translation.
-    It should *not* reuse source `scale`; the slot meta is authoritative for pixel size."""
+def test_unscaled_single_scale_export_writes_crop_to_multiscale_transforms(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test_multi_to_single.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
@@ -154,23 +151,23 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 8.0, 8.0, 8.0]},  # offset * resolution
+    ]
     expected_source_scale_transform = [
         {"type": "scale", "scale": [resolution_t, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
-        {
-            "type": "translation",
-            "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
-        },  # offset * pixel size + source scale translation
+        {"type": "translation", "translation": [0.3, 0.0, 3.2, 1.0, 1.0]},  # source scale translation
     ]
     source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
-            "name": "wonderful_pyramid",
+            "name": "source_pyramid_without_global_transforms",
             "axes": [
                 {"name": "t", "type": "time", "unit": units["t"]},
                 {"name": "z", "type": "space", "unit": units["z"]},
                 {"name": "y", "type": "space", "unit": units["y"]},
                 {"name": "x", "type": "space", "unit": units["x"]},
             ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
-            "coordinateTransformations": [{"type": "scale", "scale": "should not be accessed"}],
             "datasets": [
                 {
                     "path": "raw_scale",
@@ -183,9 +180,195 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                     "path": "source_scale",
                     "coordinateTransformations": [
                         # Normally the "scale" transform is the source of the slot's pixel size.
-                        # The slot meta above would have been obtained from [0.1, 2.0, 2.0, 2.0] here.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta.
+                        # The export should use the slot meta.
+                        {"type": "scale", "scale": [3.1, 1.3, 3.7, 6.9]},
+                        {"type": "translation", "translation": [0.3, 3.2, 1.0, 1.0]},
+                    ],
+                },
+            ],
+        },
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
+    )
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
+
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert "name" not in m  # Input name should not be carried over - presumably it names the raw data
+    assert m["axes"] == [
+        {"name": "t", "type": "time", "unit": "second"},
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]  # Axis units should be carried over
+    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert m["datasets"][0]["path"] == "source_scale"
+    assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
+
+
+def test_unscaled_single_scale_export_round_trips_t_convention(tmp_path, tiny_5d_vigra_array_piper):
+    """If the input used the convention that pixel_size[t] is written on global level, then that should be maintained."""
+    export_path = tmp_path / "test_multi_to_single.zarr"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    source_op.Output.meta.active_scale = "source_scale"
+    resolution_t = 0.1
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+    ]
+    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
+    expected_source_scale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {"type": "translation", "translation": pytest.approx([0.5, 0.0, 3.2, 1.0, 1.0])},  # source scale translation
+    ]
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
+        {
+            "name": "pyramid_with_global_t_convention",
+            "axes": [
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
+            ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "coordinateTransformations": [
+                # "global t-scale" convention means first scale value here is not 1.0 and for the
+                # dataset scales it is 1.0
+                {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}
+            ],
+            "datasets": [
+                {
+                    "path": "raw_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]},
+                        {"type": "translation", "translation": [0.1, 5.0, 2.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "source_scale",
+                    "coordinateTransformations": [
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta
                         # The export should use the slot meta; inject nonsense here to enforce it's not reused.
-                        {"type": "scale", "scale": [2.4, 1.3, 3.7, 6.9]},
+                        # But keep t-scale 1.0 to be consistent with the "global t-scale" convention
+                        {"type": "scale", "scale": [1.0, 1.3, 3.7, 6.9]},
+                        {"type": "translation", "translation": [0.5, 3.2, 1.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "downscale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 4.0, 4.0, 4.0]},
+                        {"type": "translation", "translation": [5.1, 3.5, 5.4, 1.0]},
+                    ],
+                },
+            ],
+        },
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
+    )
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, None)
+
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert "name" not in m  # Input name should not be carried over - presumably it names the raw data
+    assert m["axes"] == [
+        {"name": "t", "type": "time", "unit": "second"},
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]  # Axis units should be carried over
+    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert m["datasets"][0]["path"] == "source_scale"
+    assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
+
+
+def test_unscaled_single_scale_export_t_scale_convention_overrides_storing_crop(tmp_path, tiny_5d_vigra_array_piper):
+    """
+    When reading a zarr with global t-scale convention, export has a dilemma:
+    Expressing a global offset (i.e. our crop) isn't consistent with the convention, so it's either
+    maintain the convention, or express the crop.
+    We figure if you're working with this convention, you need to stay in it to be compatible with
+    downstream tools, so prioritise the convention.
+    Specifically, nifti-zarr uses this convention; if you read nifti-zarr in, you probably need nifti-zarr out.
+    Most likely the behaviour here doesn't matter much in practice: The nifti-zarr convention is probably niche,
+    and expressing a crop as a global translation is also probably a niche use of the global transforms.
+    """
+    export_path = tmp_path / "test_multi_to_single.zarr"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source source_scale after a 4/4/4 offset
+    export_offset = (0, 0, 4, 4, 4)
+    source_op.Output.meta.active_scale = "source_scale"
+    resolution_t = 0.1
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+        # no translation: this would be inconsistent (the multiscale's "intrinsic" system would be
+        # inbetween the scale and the translation; almost guaranteed to be misinterpreted by readers)
+    ]
+    expected_source_scale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {
+            "type": "translation",
+            "translation": pytest.approx([0.1, 0.0, 3.2, 1.0, 1.0]),
+        },  # source scale translation -- crop translation *not* added
+    ]
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
+        {
+            "name": "pyramid_with_global_t_convention",
+            "axes": [
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
+            ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "coordinateTransformations": [
+                # "global t-scale" convention means first scale value here is not 1.0 and for the
+                # dataset scales it is 1.0. The value must actually match the export pixel_size[t].
+                {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}
+            ],
+            "datasets": [
+                {
+                    "path": "raw_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]},
+                        {"type": "translation", "translation": [0.1, 5.0, 2.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "source_scale",
+                    "coordinateTransformations": [
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta
+                        # The export should use the slot meta; inject nonsense here to enforce it's not reused.
+                        # But keep t-scale 1.0 to be consistent with the "global t-scale" convention
+                        {"type": "scale", "scale": [1.0, 1.3, 3.7, 6.9]},
                         {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
                     ],
                 },
@@ -216,7 +399,7 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
         {"name": "y", "type": "space", "unit": "micrometer"},
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]  # Axis units should be carried over
-    assert "coordinateTransformations" not in m
+    assert m["coordinateTransformations"] == expected_multiscale_transform
     assert m["datasets"][0]["path"] == "source_scale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
 
@@ -284,7 +467,10 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     # 2px would be the result of scaling 5px by 2.0.
     # The scaling implementation in OpResize is precise though, so metadata should not be rounded.
     expected_downscale = [1.0, 1.0, s * 5 / 2, s * 5 / 2, s * 5 / 2]
-    expected_translation = {"type": "translation", "translation": [0.0, 0.0, s * 3, s * 3, s * 3]}  # scaled offset
+    expected_multiscale_transforms = [
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, s * 3, s * 3, s * 3]},  # scaled offset
+    ]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -294,15 +480,13 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 2
     assert m["datasets"][0]["path"] == "weird_upscale"
-    assert "coordinateTransformations" not in m
+    assert m["coordinateTransformations"] == expected_multiscale_transforms
     # The factor calculations come out unequal at 1e-16
     upscale_transforms = m["datasets"][0]["coordinateTransformations"]
     numpy.testing.assert_allclose(upscale_transforms[0]["scale"], expected_upscale, atol=1e-15)
-    assert upscale_transforms[1] == expected_translation
     assert m["datasets"][1]["path"] == "downscale"
     downscale_transforms = m["datasets"][1]["coordinateTransformations"]
     numpy.testing.assert_allclose(downscale_transforms[0]["scale"], expected_downscale, atol=1e-15)
-    assert downscale_transforms[1] == expected_translation
 
 
 def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper):
@@ -372,22 +556,20 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 6.0, 6.0, 6.0]},  # crop translation in physical units
+    ]
     s_abs = 2.0  # Even if OpResize scales precisely, output should be computed based on the input's metadata.
     upscale = [0.1, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
     downscale = [0.1, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
     expected_upscale_transform = [
         {"type": "scale", "scale": upscale},
-        {
-            "type": "translation",
-            "translation": [3.1, 0.0, 9.2, 8.1, 7.0],
-        },  # offset * input scale + source scale translation
+        {"type": "translation", "translation": [3.1, 0.0, 3.2, 2.1, 1.0]},  # source scale translation
     ]
     expected_downscale_transform = [
         {"type": "scale", "scale": downscale},
-        {
-            "type": "translation",
-            "translation": [3.1, 0.0, 9.2, 8.1, 7.0],
-        },  # offset * input scale + source scale translation
+        {"type": "translation", "translation": [3.1, 0.0, 3.2, 2.1, 1.0]},  # source scale translation
     ]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
@@ -405,7 +587,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
         {"name": "y", "type": "space", "unit": "micrometer"},
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]  # Axis units should be carried over
-    assert "coordinateTransformations" not in m
+    assert m["coordinateTransformations"] == expected_multiscale_transform
     assert m["datasets"][0]["path"] == "weird_upscale"
     assert m["datasets"][0]["coordinateTransformations"] == expected_upscale_transform
     assert m["datasets"][1]["path"] == "downscale"

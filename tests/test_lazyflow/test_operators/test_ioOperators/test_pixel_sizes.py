@@ -808,9 +808,8 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
         {"name": "y", "type": "space", "unit": "nm"},
         {"name": "x", "type": "space", "unit": "mm"},
     ]
-    # Dataset scale is mandatory, but should be noop here. In single-scale export from a single-scale source,
-    # pixel size should be written on multiscale-level. This isn't a spec requirement, but a generalisation of the
-    # convention of writing scale for the t-axis into the multiscale-level transforms.
+    # Pixel size is dataset scale:
+    # "They MUST contain exactly one scale transformation that specifies the pixel size in physical units or time duration."
     expected_dataset_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None)

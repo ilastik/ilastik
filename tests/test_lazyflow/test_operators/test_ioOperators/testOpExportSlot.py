@@ -26,6 +26,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 import numpy
+import pytest
 import vigra
 import z5py
 
@@ -92,7 +93,9 @@ class TestOpExportSlot(object):
         opExport.OutputFormat.setValue("single-scale OME-Zarr")
         opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
         opExport.CoordinateOffset.setValue((10, 20))
-        expected_transformations = [
+        expected_dataset_transformations = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]}]
+        # Crop offset is written as a global translation
+        expected_multiscale_transformations = [
             {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
             {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
         ]
@@ -112,7 +115,11 @@ class TestOpExportSlot(object):
             written_file = z5py.ZarrFile(str(expected_export_path), "r")
             assert (
                 written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
-                == expected_transformations
+                == expected_dataset_transformations
+            )
+            assert "coordinateTransformations" in written_file.attrs["multiscales"][0]
+            assert (
+                written_file.attrs["multiscales"][0]["coordinateTransformations"] == expected_multiscale_transformations
             )
         finally:
             opRead.cleanUp()
@@ -158,11 +165,15 @@ class TestOpExportSlot(object):
                 if scale == "s0":  # only assert written data at raw scale here (scaling covered in OpResize)
                     numpy.testing.assert_array_equal(read_data, expected_data)
                 written_file = z5py.ZarrFile(str(expected_export_path), "r")
-                assert "coordinateTransformations" not in written_file.attrs["multiscales"][0]
-                expected_dataset_transformations = [
-                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]},
+                expected_multiscale_transformations = [
+                    {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
                     {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
                 ]
+                assert (
+                    written_file.attrs["multiscales"][0]["coordinateTransformations"]
+                    == expected_multiscale_transformations
+                )
+                expected_dataset_transformations = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 2.0**i, 2.0**i]}]
                 assert (
                     written_file.attrs["multiscales"][0]["datasets"][i]["coordinateTransformations"]
                     == expected_dataset_transformations
@@ -221,6 +232,10 @@ class TestOpExportSlot(object):
                         "path": "s0",
                     }
                 ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                ],
                 "version": "0.4",
             }
         ]
@@ -232,6 +247,10 @@ class TestOpExportSlot(object):
                     {"name": "z", "type": "space"},
                     {"name": "y", "type": "space", "unit": "nanometer"},
                     {"name": "x", "type": "space", "unit": "nanometer"},
+                ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
                 ],
                 "datasets": [
                     {
@@ -340,7 +359,6 @@ class TestOpExportSlot(object):
         # Expected written meta is the same as input, but:
         # - tczyx
         # - no name
-        # - multiscale-global transformations are folded into datasets (similar to ome-zarr 0.6 convention)
         # - "s1" transformations are discarded. The exported "s1" is a newly generated downscale.
         expected_ms = {
             "axes": [
@@ -353,24 +371,25 @@ class TestOpExportSlot(object):
             "datasets": [
                 {
                     "coordinateTransformations": [
-                        {"scale": [1.0, 1.0, 0.3, 0.2, 0.2], "type": "scale"},
-                        {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+                        {"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"},
                     ],
                     "path": "s0",
                 },
                 {
                     "coordinateTransformations": [
-                        {"scale": [1.0, 1.0, 0.3, 0.6, 0.6], "type": "scale"},
-                        {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+                        {"scale": [1.0, 1.0, 1.0, 0.6, 0.6], "type": "scale"},
                     ],
                     "path": "s1",
                 },
             ],
+            "coordinateTransformations": [
+                {"scale": [1.0, 1.0, 0.3, 1.0, 1.0], "type": "scale"},
+                {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+            ],
             "version": "0.4",
             "metadata": {
                 "description": "ilastik's lazyflow.operators.opResize.OpResize "
-                "is a lazy implementation of "
-                "skimage.transform.resize.",
+                "is a lazy implementation of skimage.transform.resize.",
                 "kwargs": {"anti_aliasing": True, "order": 1, "preserve_range": True},
                 "method": "skimage.transform.resize",
                 "version": "0.24.0",
@@ -401,33 +420,34 @@ class TestOpExportSlot(object):
             assert written_ms["axes"] == expected_ms["axes"]
             assert written_ms["metadata"] == expected_ms["metadata"]
             assert written_ms["version"] == expected_ms["version"]
-            assert "coordinateTransformations" not in written_ms
+            assert "coordinateTransformations" in written_ms
+            self._assert_transforms_eq(
+                written_ms["coordinateTransformations"], expected_ms["coordinateTransformations"]
+            )
             assert len(written_ms["datasets"]) == len(expected_ms["datasets"])
             for written_ds, expected_ds in zip(written_ms["datasets"], expected_ms["datasets"]):
                 assert written_ds["path"] == expected_ds["path"]
-                written_ds_transforms = written_ds["coordinateTransformations"]
-                expected_ds_transforms = expected_ds["coordinateTransformations"]
-                assert len(written_ds_transforms) == len(
-                    expected_ds_transforms
-                ), f"expected {len(expected_ds_transforms)}"
-                self._assert_transforms_eq(written_ds_transforms, expected_ds_transforms)
+                self._assert_transforms_eq(
+                    written_ds["coordinateTransformations"], expected_ds["coordinateTransformations"]
+                )
 
     @staticmethod
     def _assert_transforms_eq(written_transforms, expected_transforms):
+        assert len(written_transforms) == len(expected_transforms)
         if len(expected_transforms) == 0:
             return
         assert "scale" in written_transforms[0]
-        written_ms_scale = written_transforms[0]["scale"]
+        written_scale = written_transforms[0]["scale"]
         expected_scale = expected_transforms[0]["scale"]
-        for written, expected in zip(written_ms_scale, expected_scale):
-            assert numpy.isclose(written, expected, atol=1e-15)
+        assert len(written_scale) == len(expected_scale)
+        assert written_scale == pytest.approx(expected_scale, abs=1e-15)
         if len(expected_transforms) == 1:
             return
         assert "translation" in written_transforms[1]
-        written_ms_transl = written_transforms[1]["translation"]
+        written_transl = written_transforms[1]["translation"]
         expected_transl = expected_transforms[1]["translation"]
-        for written, expected in zip(written_ms_transl, expected_transl):
-            assert numpy.isclose(written, expected, atol=1e-15)
+        assert len(written_transl) == len(expected_transl)
+        assert written_transl == pytest.approx(expected_transl, abs=1e-15)
 
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)
