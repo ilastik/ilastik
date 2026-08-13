@@ -808,9 +808,8 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
         {"name": "y", "type": "space", "unit": "nm"},
         {"name": "x", "type": "space", "unit": "mm"},
     ]
-    # Dataset scale is mandatory, but should be noop here. In single-scale export from a single-scale source,
-    # pixel size should be written on multiscale-level. This isn't a spec requirement, but a generalisation of the
-    # convention of writing scale for the t-axis into the multiscale-level transforms.
+    # Pixel size is dataset scale:
+    # "They MUST contain exactly one scale transformation that specifies the pixel size in physical units or time duration."
     expected_dataset_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None)
@@ -851,6 +850,13 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
             shape=op_data.Output.meta.getTaggedShape(),
             pixel_size=clearscale.PixelSize.from_vigra(op_data.Output.meta.axistags),
             unit=clearscale.Unit(op_data.Output.meta.axis_units),
+            ome_zarr_axes={
+                "t": clearscale.ome_zarr.Axis(type="time"),
+                "z": clearscale.ome_zarr.Axis(type="space"),
+                "y": clearscale.ome_zarr.Axis(type="space"),
+                "x": clearscale.ome_zarr.Axis(type="space"),
+                "c": clearscale.ome_zarr.Axis(type="channel"),
+            },
         ).with_axes("tczyx")
     )
     for tag in reader.Output.meta.axistags:
