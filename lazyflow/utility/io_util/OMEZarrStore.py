@@ -22,7 +22,7 @@ import json
 import logging
 import math
 import os
-from typing import Dict, List, Optional, Literal, Tuple, Any
+from typing import Dict, List, Optional, Literal, Tuple, Any, cast
 from urllib.parse import unquote_to_bytes
 
 import clearscale
@@ -172,82 +172,6 @@ def _ensure_connection_and_get_store(uri: str, mode="r") -> FSStore:
     return store
 
 
-def _parse_ome_zarr_labels(spec: Dict, uri: str) -> List[str]:
-    if "labels" not in spec:
-        raise ValueError("not a labels spec")
-    labels = spec["labels"]
-    if not isinstance(labels, list) or len(labels) < 1:
-        raise NotAnOMEZarrMultiscale(f"Found OME-Zarr labels metadata, but it was empty.\nAt URL: {uri}\nFound: {spec}")
-    return [f"{uri}/{label}" for label in labels]
-
-
-def _parse_ome_zarr_well(spec: Dict, uri: str) -> List[str]:
-    if "well" not in spec or "images" not in spec["well"]:
-        raise ValueError("not a well spec")
-    images = spec["well"]["images"]
-    if not isinstance(images, list) or len(images) < 1 or any("path" not in image for image in images):
-        raise NotAnOMEZarrMultiscale(
-            f"Found OME-Zarr well metadata, but it was malformed (no images, or images without path)."
-            f"\nAt URL: {uri}\nFound: {spec}"
-        )
-    return [f"{uri}/{image['path']}" for image in images]
-
-
-def _parse_ome_zarr_plate(spec: Dict, uri: str) -> List[str]:
-    if "plate" not in spec or "wells" not in spec["plate"]:
-        raise ValueError("not a plate spec")
-    wells = spec["plate"]["wells"]
-    if not isinstance(wells, list) or len(wells) < 1 or any("path" not in well for well in wells):
-        raise NotAnOMEZarrMultiscale(
-            f"Found OME-Zarr plate metadata, but it was malformed (no wells, or wells without path)."
-            f"\nAt URL: {uri}\nFound: {spec}"
-        )
-    return [f"{uri}/{well['path']}" for well in wells]
-
-
-def _check_non_multiscale_specs(spec: Dict, uri: str, sort_uri: Optional[str] = None):
-    """
-    Checks if spec might be labels, plate or well OME-Zarr metadata.
-    Raises NotAnOMEZarrMultiscale with suggestions for the user if so.
-    :param uri: Required to assemble full URIs to suggest to the user
-    :param sort_uri: Used to sort suggestions so that URIs containing `sort_uri` come first.
-    """
-    # labels, well and plate zattrs each point to a list of multiscales the user can choose from
-    sub_paths = []
-    spec_type = item_type = ""
-
-    try:
-        sub_paths = _parse_ome_zarr_labels(spec, uri)
-        spec_type = "labels"
-        item_type = "label"
-    except ValueError:
-        pass
-
-    try:
-        sub_paths = _parse_ome_zarr_well(spec, uri)
-        spec_type = "well"
-        item_type = "acquisition"
-    except ValueError:
-        pass
-
-    try:
-        sub_paths = _parse_ome_zarr_plate(spec, uri)
-        spec_type = "plate"
-        item_type = "well"
-    except ValueError:
-        pass
-
-    if not sub_paths:
-        return
-
-    if sort_uri:
-        sub_paths.sort(key=lambda x: sort_uri not in x)
-    raise NotAnOMEZarrMultiscale(
-        f"This URL points to a {spec_type} directory. "
-        f"Please try one of the following {item_type} URLs:\n" + "\n".join(sub_paths)
-    )
-
-
 def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) -> OME_ZARR_SPEC:
     """Fetch uri/.zattrs and validate it against OME-Zarr spec.
     :param sort_uri: If the spec at `uri` is not multiscale but plate, well or labels,
@@ -255,7 +179,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     store = _ensure_connection_and_get_store(uri)
     try:
         with Timer() as timer:
-            spec = json.loads(store[".zattrs"])
+            spec = cast(OME_ZARR_SPEC, json.loads(store[".zattrs"]))
             logger.info(f"Reading OME-Zarr metadata from {uri}/.zattrs took {timer.seconds()*1000} ms.")
     except KeyError as e:
         try:
@@ -271,24 +195,17 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
             "If this is a private S3 or S3-compatible store, please check your credentials are set up for S3FS."
         ) from e
 
-    # Found .zattrs, but what kind of .zattrs?
-    _check_non_multiscale_specs(spec, uri, sort_uri)
-
-    if "multiscales" not in spec or not spec["multiscales"]:
-        raise NoOMEZarrMetaFound(f"No 'multiscales' metadata found in: {spec!r}")
-
-    valid_ms = []
-    for ms_dict in spec["multiscales"]:
-        try:
-            valid_ms.append(
-                clearscale.Multiscale.from_ome_zarr(
-                    ms_dict, shape_source=clearscale.ome_zarr.make_proportional_shapes(ms_dict)
-                )
-            )
-        except ValueError:
-            continue
-    if not valid_ms:
-        raise NoOMEZarrMetaFound(f"No valid multiscale entry found in: {spec['multiscales']!r}")
+    ome_group = clearscale.OmeZarrGroup.from_attrs(spec, shape_source="singletons")
+    if not ome_group.multiscales:
+        if not ome_group.children:
+            raise NoOMEZarrMetaFound(f"No valid multiscale entry found in: {spec!r}")
+        paths = [f"{uri}/{ref.file.path}" for ref in ome_group.children if ref.file.path_type == "zarr"]
+        if sort_uri:
+            paths = sorted(paths, key=lambda x: sort_uri not in x)
+        raise NotAnOMEZarrMultiscale(
+            f"This URL points to a {ome_group.kind.value} directory. Please try one of the following URLs:\n"
+            + "\n".join(paths)
+        )
     return spec
 
 
