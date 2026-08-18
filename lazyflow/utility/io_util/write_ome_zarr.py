@@ -135,11 +135,9 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
         za.attrs["drange"] = ilastik_meta["drange"]
 
 
-def _get_scaling_method_metadata(
-    export_blueprint: clearscale.BlueprintShapes, interpolation_order: int
-) -> Optional[Dict]:
+def _get_scaling_method_metadata(export_blueprint: clearscale.BlueprintShapes, interpolation_order: int) -> Dict:
     if not export_blueprint.scaled_axes():
-        return None
+        return {}
     metadata = {
         "description": "ilastik's lazyflow.operators.opResize.OpResize is a lazy implementation of skimage.transform.resize.",
         "method": "skimage.transform.resize",
@@ -173,16 +171,14 @@ def _write_ome_zarr_and_ilastik_metadata(
 
     export_scale = clearscale.Scale(export_shape, export_pixel_size, export_unit, export_translation)
     multiscale = export_blueprint.apply_to_scale(export_scale)
-    ome_zarr_multiscale_meta = multiscale.to_ome_zarr(version="0.4", axis_types="infer")
+    multiscale.ome.metadata.update(_get_scaling_method_metadata(export_blueprint, interpolation_order))
 
-    scaling_meta = _get_scaling_method_metadata(export_blueprint, interpolation_order)
-    if scaling_meta:
-        ome_zarr_multiscale_meta["metadata"] = scaling_meta
+    ome_attrs = clearscale.OmeZarrGroup.from_single(multiscale).to_attrs(version="0.4", axis_types="infer")
 
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
+    root.attrs.update(ome_attrs)
     root.attrs["_creator"] = ilastik_signature
-    root.attrs["multiscales"] = [ome_zarr_multiscale_meta]
     for path in export_blueprint.keys():
         za = zarr.Array(store, path=path)
         _write_to_dataset_attrs(ilastik_meta, za)
