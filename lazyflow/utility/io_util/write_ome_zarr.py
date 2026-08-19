@@ -156,7 +156,10 @@ def _write_ome_zarr_and_ilastik_metadata(
     input_scale: Optional[clearscale.Scale],
     ilastik_meta: Dict,
 ):
-    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 2}
+    # Exporter versions:
+    # 2: after adding the `multi-scale OME-Zarr` format
+    # 3: after extracting clearscale
+    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 3}
     export_pixel_size = clearscale.PixelSize.from_vigra(ilastik_meta["axistags"])
     axes = list(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
