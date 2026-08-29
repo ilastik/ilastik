@@ -131,7 +131,8 @@ class OpConcatenateFeatureMatrices(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FeatureMatrices:
-            self._dirty_slots.add(self.FeatureMatrices[subindex])
+            if subindex in self._touched_slots:
+                self._dirty_slots.add(self.FeatureMatrices[subindex])
             self.ConcatenatedOutput.setDirty()
         else:
             assert slot == self.ProgressSignals, "Unhandled dirty slot: {}".format(slot.name)
