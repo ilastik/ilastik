@@ -990,7 +990,7 @@ class CountingGui(LabelingGui):
 
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(
-                self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount()
+                ensure_bool(self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
             )
             self._labelControlUi.AddLabelButton.setText("Add Label")
 

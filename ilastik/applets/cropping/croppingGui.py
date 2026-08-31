@@ -27,6 +27,7 @@ import itertools
 from functools import partial
 
 # Third-party
+from ilastik.utility.gui.qtcompat import ensure_bool
 import numpy
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QApplication
@@ -395,7 +396,7 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.cropListModel[i].name = n
 
         if hasattr(self._cropControlUi, "AddCropButton"):
-            self._cropControlUi.AddCropButton.setEnabled(numCrops < self.maxCropNumber)
+            self._cropControlUi.AddCropButton.setEnabled(ensure_bool(numCrops < self.maxCropNumber))
 
     def _addNewCrop(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)

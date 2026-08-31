@@ -1,6 +1,7 @@
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QCheckBox
 from qtpy.QtCore import Signal
 
+from ilastik.utility.gui.qtcompat import ensure_bool
 from lazyflow.slot import valueContext
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingMixin
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
@@ -117,7 +118,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingMixin, LayerView
     def configure_gui_from_operator(self, *args):
         EdgeTrainingMixin.configure_gui_from_operator(self)
         MulticutGuiMixin.configure_gui_from_operator(self)
-        self.train_edge_clf_box.setChecked(self.topLevelOperatorView.TrainRandomForest.value)
+        self.train_edge_clf_box.setChecked(ensure_bool(self.topLevelOperatorView.TrainRandomForest.value))
 
     def configure_operator_from_gui(self):
         EdgeTrainingMixin.configure_operator_from_gui(self)
