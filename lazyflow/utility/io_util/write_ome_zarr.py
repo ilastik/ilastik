@@ -85,7 +85,7 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> clears
     unscaled = clearscale.Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
     chunk_shape = _get_chunk_shape(unscaled, dtype)
     shapes = clearscale.BlueprintShapes.downscale_powers_of_2_xyz(
-        base_shape=unscaled, shape_limit=chunk_shape, rounding="floor"
+        base_shape=unscaled, limit_all=chunk_shape, rounding="floor"
     )
     return shapes
 
@@ -136,7 +136,7 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
 
 
 def _get_scaling_method_metadata(export_blueprint: clearscale.BlueprintShapes, interpolation_order: int) -> Dict:
-    if not export_blueprint.scaled_axes():
+    if not export_blueprint.scaled_axes:
         return {}
     metadata = {
         "description": "ilastik's lazyflow.operators.opResize.OpResize is a lazy implementation of skimage.transform.resize.",
@@ -162,7 +162,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     # 3: after extracting clearscale
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 3}
     export_pixel_size = clearscale.PixelSize.from_vigra(ilastik_meta["axistags"])
-    axes = list(export_pixel_size.keys())
+    axes = tuple(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
         export_unit = clearscale.Unit(ilastik_meta["axis_units"]).with_axes(axes)
     else:
@@ -181,8 +181,8 @@ def _write_ome_zarr_and_ilastik_metadata(
         crop_translation = export_offset.with_axes(axes).to_physical(export_pixel_size)
     if input_multiscale:
         derivation = []
-        if axes != input_multiscale.axes():
-            derivation.append(clearscale.AxisRearrangementTo(multiscale.axes()))
+        if axes != input_multiscale.axes:
+            derivation.append(clearscale.AxisRearrangementTo(axes))
         if crop_translation is not None:
             derivation.append(crop_translation)
         multiscale = multiscale.as_derived_from(input_multiscale, by=derivation)

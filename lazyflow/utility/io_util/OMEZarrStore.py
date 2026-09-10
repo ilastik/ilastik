@@ -311,7 +311,7 @@ class OMEZarrStore(MultiscaleStore):
 
         multiscale = clearscale.Multiscale.from_ome_zarr(self._multiscale_spec, shape_source=get_shape_keep_zarray)
         dtype = next(iter(self._scale_data.values()))["zarray"].dtype.type
-        axistags = vigra.defaultAxistags("".join(multiscale.axes()))
+        axistags = vigra.defaultAxistags("".join(multiscale.axes))
         super().__init__(
             uri=uri,
             dtype=dtype,
