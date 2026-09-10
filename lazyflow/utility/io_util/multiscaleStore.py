@@ -35,7 +35,7 @@ def set_multiscale_meta(slot: OutputSlot, multiscale: clearscale.Multiscale, act
     assert active_scale_key in multiscale, f"Tried to set slot meta for non-existent scale {active_scale_key}"
     assert slot.meta.axistags is not None, "multiscale can not be used to update slot metadata missing axistags."
     active_scale = multiscale[active_scale_key]
-    if active_scale.has_physical_meta():
+    if active_scale.has_physical_metadata():
         active_scale.pixel_size.to_vigra(slot.meta.axistags)
         slot.meta.axis_units = dict(active_scale.unit)
     slot.meta.scales = multiscale
