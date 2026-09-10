@@ -857,7 +857,8 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
                 "x": clearscale.ome_zarr.Axis(type="space"),
                 "c": clearscale.ome_zarr.Axis(type="channel"),
             },
-        ).with_axes("tczyx")
+        ).with_axes("tczyx"),
+        translating="first_value_decimation",
     )
     for tag in reader.Output.meta.axistags:
         scaling = source_shape[tag.key] / target_shape_down[tag.key]

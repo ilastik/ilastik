@@ -85,7 +85,7 @@ def generate_default_target_scales(unscaled_shape: TaggedShape, dtype) -> clears
     unscaled = clearscale.Shape(unscaled_shape).with_axes(OME_ZARR_AXES)
     chunk_shape = _get_chunk_shape(unscaled, dtype)
     shapes = clearscale.BlueprintShapes.downscale_powers_of_2_xyz(
-        base_shape=unscaled, shape_limit=chunk_shape, rounding="floor"
+        base_shape=unscaled, limit_all=chunk_shape, rounding="floor"
     )
     return shapes
 
@@ -136,7 +136,7 @@ def _write_to_dataset_attrs(ilastik_meta: Dict, za: zarr.Array):
 
 
 def _get_scaling_method_metadata(export_blueprint: clearscale.BlueprintShapes, interpolation_order: int) -> Dict:
-    if not export_blueprint.scaled_axes():
+    if not export_blueprint.scaled_axes:
         return {}
     metadata = {
         "description": "ilastik's lazyflow.operators.opResize.OpResize is a lazy implementation of skimage.transform.resize.",
@@ -162,7 +162,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     # 3: after extracting clearscale
     ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 3}
     export_pixel_size = clearscale.PixelSize.from_vigra(ilastik_meta["axistags"])
-    axes = list(export_pixel_size.keys())
+    axes = tuple(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
         export_unit = clearscale.Unit(ilastik_meta["axis_units"]).with_axes(axes)
     else:
@@ -174,21 +174,22 @@ def _write_ome_zarr_and_ilastik_metadata(
         input_translation = input_scale.translation.with_axes(axes)
         export_ome_axes = input_scale.ome_zarr_axes.with_axes(axes, infer_inserted_types=True)
     export_scale = clearscale.Scale(export_shape, export_pixel_size, export_unit, input_translation, export_ome_axes)
-    multiscale = export_blueprint.apply_to_scale(export_scale)
+    # TODO: first_value_decimation is actually incorrect - opResize does half_pixel_shape_preservation
+    multiscale = export_blueprint.apply_to_scale(export_scale, translating="first_value_decimation")
 
     crop_translation = None
     if export_offset:
         crop_translation = export_offset.with_axes(axes).to_physical(export_pixel_size)
     if input_multiscale:
-        derivation = []
-        if axes != input_multiscale.axes():
-            derivation.append(clearscale.AxisRearrangementTo(multiscale.axes()))
+        to_input = []
+        if axes != input_multiscale.axes:
+            to_input.append(clearscale.AxisRearrangementTo(input_multiscale.axes))
         if crop_translation is not None:
-            derivation.append(crop_translation)
-        multiscale = multiscale.as_derived_from(input_multiscale, by=derivation)
+            to_input.append(crop_translation.with_axes(input_multiscale.axes))
+        multiscale = multiscale.as_derived_from(input_multiscale, reached_by=to_input)
     elif crop_translation is not None:
-        # Inverted: the export needs to be un-shifted to return to its original space
-        multiscale = multiscale.with_coordinate_system("source_image_space", reached_by=crop_translation.inverted())
+        # Add the crop offset to reach coordinates in the original space.
+        multiscale = multiscale.with_coordinate_system("source_image_space", reached_by=crop_translation)
     multiscale.ome.metadata.update(_get_scaling_method_metadata(export_blueprint, interpolation_order))
 
     ome_attrs = clearscale.OmeZarrGroup.from_single(multiscale).to_attrs(version="0.4")

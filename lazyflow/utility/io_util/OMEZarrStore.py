@@ -199,7 +199,7 @@ def _fetch_and_validate_ome_zarr_spec(uri: str, sort_uri: Optional[str] = None) 
     if not ome_group.multiscales:
         if not ome_group.children:
             raise NoOMEZarrMetaFound(f"No valid multiscale entry found in: {spec!r}")
-        paths = [f"{uri}/{ref.file.path}" for ref in ome_group.children if ref.file.path_type == "zarr"]
+        paths = [f"{uri}/{child.path}" for child in ome_group.children]
         if sort_uri:
             paths = sorted(paths, key=lambda x: sort_uri not in x)
         raise NotAnOMEZarrMultiscale(
@@ -311,7 +311,7 @@ class OMEZarrStore(MultiscaleStore):
 
         multiscale = clearscale.Multiscale.from_ome_zarr(self._multiscale_spec, shape_source=get_shape_keep_zarray)
         dtype = next(iter(self._scale_data.values()))["zarray"].dtype.type
-        axistags = vigra.defaultAxistags("".join(multiscale.axes()))
+        axistags = vigra.defaultAxistags("".join(multiscale.axes))
         super().__init__(
             uri=uri,
             dtype=dtype,
