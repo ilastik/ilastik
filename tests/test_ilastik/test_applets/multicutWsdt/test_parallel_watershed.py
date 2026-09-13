@@ -49,3 +49,35 @@ def test_parallel_watershed_consistency(data):
         block_data = ws[inner_slicing]
         assert block_data.min() == running_max
         running_max = block_data.max() + 1
+
+
+def test_parallel_watershed_small_edge_blocks():
+    """Regression test for #3153: segfault when edge blocks are very small.
+
+    With a dataset of shape 129x129x129 and default block_shape=128, the last
+    block along each axis has only 1 voxel inner + 10 halo = 11 voxels. With a
+    large sigma, fastfilters.gaussianSmoothing would segfault on such small blocks.
+    The fix extends the outer block to a minimum size.
+    """
+    # 129^3 -> last block is only 1 voxel, with halo=10 the outer block is 11 voxels
+    data = numpy.random.rand(129, 129, 129).astype(numpy.float32)
+    # Use a sigma large enough to cause issues with small blocks
+    sigma = 5.0
+
+    ws, max_label = parallel_watershed(
+        data=data,
+        threshold=0.5,
+        sigma_seeds=sigma,
+        sigma_weights=sigma,
+        minsize=1,
+        alpha=0.9,
+        pixel_pitch=None,
+        non_max_suppression=False,
+        block_shape=None,  # default 128^3
+        halo=None,  # default [10, 10, 10]
+        max_workers=1,
+    )
+
+    assert max_label > 0
+    assert ws.min() == 1
+    assert ws.shape == data.shape
