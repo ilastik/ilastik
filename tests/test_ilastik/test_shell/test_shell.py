@@ -1,7 +1,11 @@
 from qtpy.QtCore import QRect
 from ilastik.shell.gui.ilastikShell import IlastikShell
+from ilastik.shell.projectManager import ProjectManager
 
+import h5py
+import os
 import pytest
+import tempfile
 from unittest.mock import patch
 
 
@@ -66,3 +70,42 @@ def test_createAndLoadNewProject_shows_dialog_on_oserror():
 
     # Project must NOT have been loaded
     shell._loadProject.assert_not_called()
+
+
+def test_createBlankProjectFile_does_not_corrupt_locked_file():
+    """
+    When the target file exists but is locked by another process,
+    createBlankProjectFile must raise an OSError and leave the original
+    file intact (not truncate/corrupt it).
+
+    Regression test for https://github.com/ilastik/ilastik/issues/3235
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        project_path = os.path.join(tmpdir, "test.ilp")
+
+        # Create a valid project file first
+        with h5py.File(project_path, "w") as f:
+            f.create_dataset("ilastikVersion", data=b"1.4.2")
+            f.create_dataset("workflowName", data=b"PixelClassification")
+        original_size = os.path.getsize(project_path)
+        assert original_size > 0
+
+        # Simulate the file being locked by another process:
+        # Patch h5py.File so that opening in "r" mode raises OSError (locked),
+        # while "w" mode is also blocked to prevent actual truncation.
+        real_h5py_file = h5py.File
+
+        def mock_h5py_file(name, mode="r", *args, **kwargs):
+            if mode == "r" and str(name) == project_path:
+                raise OSError("Unable to synchronously open file (unable to lock file)")
+            return real_h5py_file(name, mode, *args, **kwargs)
+
+        with patch("ilastik.shell.projectManager.h5py.File", side_effect=mock_h5py_file):
+            with pytest.raises(OSError, match="locked by another process"):
+                ProjectManager.createBlankProjectFile(project_path)
+
+        # Verify the file was NOT corrupted - still has original size and is readable
+        assert os.path.getsize(project_path) == original_size
+        with h5py.File(project_path, "r") as f:
+            assert "ilastikVersion" in f
+            assert f["ilastikVersion"][()] == b"1.4.2"
