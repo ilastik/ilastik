@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import List, Union, Iterable
 from unittest import mock
 
+import clearscale
 import numpy
 import pytest
 import vigra
@@ -9,9 +10,7 @@ import zarr
 
 from lazyflow.operators import OpArrayPiper
 from lazyflow.utility.data_semantics import ImageTypes
-from lazyflow.utility.io_util.OMEZarrStore import OMEZarrTranslations
 from lazyflow.utility.io_util.write_ome_zarr import (
-    ShapesByScaleKey,
     write_ome_zarr,
     generate_default_target_scales,
     _match_target_scales_to_input,
@@ -34,7 +33,7 @@ def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
         (
             (21, 23, 3),
             "yxc",
-            OrderedDict(
+            clearscale.BlueprintShapes(
                 [
                     ("raw", tagged_shape("tczyx", (1, 3, 1, 21, 23))),
                     ("scaled", tagged_shape("tczyx", (1, 3, 1, 10, 12))),
@@ -44,7 +43,7 @@ def tagged_shape(axes: Union[str, List[str]], shape: Iterable[int]):
         (
             (21, 23, 3),
             "yxc",
-            OrderedDict({"s0": tagged_shape("tczyx", (1, 3, 1, 10, 12))}),
+            clearscale.BlueprintShapes({"s0": tagged_shape("tczyx", (1, 3, 1, 10, 12))}),
         ),
     ],
 )
@@ -135,28 +134,17 @@ def test_do_not_overwrite(tmp_path, tiny_5d_vigra_array_piper):
     numpy.testing.assert_array_equal(group["s0"], original_data_array)
 
 
-def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
-    """If the source slot has OME-Zarr metadata, single-scale export should match
-    the input scale name. multiscale["coordinateTransformations"] should report scale for t-axis only
-    and translation being offset * resolution. dataset["coordinateTransformations"] should report scale
-    for xyz (scaling axes in the input) and copy translation from input ome metadata unmodified."""
+def test_unscaled_single_scale_export_writes_crop_to_multiscale_transforms(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path / "test_multi_to_single.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    multiscale: ShapesByScaleKey = OrderedDict(
-        [
-            ("raw_scale", tagged_shape("tzyx", (2, 17, 17, 17))),
-            ("source_scale", tagged_shape("tzyx", (2, 9, 9, 9))),
-            ("downscale", tagged_shape("tzyx", (2, 5, 5, 5))),
-        ]
-    )
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source source_scale after a 4/4/4 offset
     export_offset = (0, 0, 4, 4, 4)
-    source_op.Output.meta.scales = multiscale
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
-    resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
     units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
     source_op.Output.meta.axistags.setResolution("t", resolution_t)
     source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
@@ -164,26 +152,22 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
     expected_multiscale_transform = [
-        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
-        {
-            "type": "translation",
-            "translation": [0.1, 0.0, 11.2, 9.0, 9.0],
-        },  # offset * input scale + source scale translation
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 8.0, 8.0, 8.0]},  # offset * resolution
     ]
-    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
     expected_source_scale_transform = [
-        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {"type": "scale", "scale": [resolution_t, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {"type": "translation", "translation": [0.3, 0.0, 3.2, 1.0, 1.0]},  # source scale translation
     ]
-    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
-            "name": "wonderful_pyramid",
+            "name": "source_pyramid_without_global_transforms",
             "axes": [
                 {"name": "t", "type": "time", "unit": units["t"]},
                 {"name": "z", "type": "space", "unit": units["z"]},
                 {"name": "y", "type": "space", "unit": units["y"]},
                 {"name": "x", "type": "space", "unit": units["x"]},
             ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
-            "coordinateTransformations": [{"type": "scale", "scale": "should not be accessed"}],
             "datasets": [
                 {
                     "path": "raw_scale",
@@ -195,7 +179,196 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                 {
                     "path": "source_scale",
                     "coordinateTransformations": [
-                        {"type": "scale", "scale": "should not be accessed"},
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta.
+                        # The export should use the slot meta.
+                        {"type": "scale", "scale": [3.1, 1.3, 3.7, 6.9]},
+                        {"type": "translation", "translation": [0.3, 3.2, 1.0, 1.0]},
+                    ],
+                },
+            ],
+        },
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
+    )
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
+
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert "name" not in m  # Input name should not be carried over - presumably it names the raw data
+    assert m["axes"] == [
+        {"name": "t", "type": "time", "unit": "second"},
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]  # Axis units should be carried over
+    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert m["datasets"][0]["path"] == "source_scale"
+    assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
+
+
+def test_unscaled_single_scale_export_round_trips_t_convention(tmp_path, tiny_5d_vigra_array_piper):
+    """If the input used the convention that pixel_size[t] is written on global level, then that should be maintained."""
+    export_path = tmp_path / "test_multi_to_single.zarr"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    source_op.Output.meta.active_scale = "source_scale"
+    resolution_t = 0.1
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+    ]
+    # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
+    expected_source_scale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {"type": "translation", "translation": pytest.approx([0.5, 0.0, 3.2, 1.0, 1.0])},  # source scale translation
+    ]
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
+        {
+            "name": "pyramid_with_global_t_convention",
+            "axes": [
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
+            ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "coordinateTransformations": [
+                # "global t-scale" convention means first scale value here is not 1.0 and for the
+                # dataset scales it is 1.0
+                {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}
+            ],
+            "datasets": [
+                {
+                    "path": "raw_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]},
+                        {"type": "translation", "translation": [0.1, 5.0, 2.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "source_scale",
+                    "coordinateTransformations": [
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta
+                        # The export should use the slot meta; inject nonsense here to enforce it's not reused.
+                        # But keep t-scale 1.0 to be consistent with the "global t-scale" convention
+                        {"type": "scale", "scale": [1.0, 1.3, 3.7, 6.9]},
+                        {"type": "translation", "translation": [0.5, 3.2, 1.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "downscale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 4.0, 4.0, 4.0]},
+                        {"type": "translation", "translation": [5.1, 3.5, 5.4, 1.0]},
+                    ],
+                },
+            ],
+        },
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
+    )
+
+    write_ome_zarr(str(export_path), source_op.Output, progress, None)
+
+    group = zarr.open(str(export_path))
+    assert "multiscales" in group.attrs
+    m = group.attrs["multiscales"][0]
+    assert "datasets" in m and "path" in m["datasets"][0]
+    assert len(m["datasets"]) == 1
+    assert "name" not in m  # Input name should not be carried over - presumably it names the raw data
+    assert m["axes"] == [
+        {"name": "t", "type": "time", "unit": "second"},
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]  # Axis units should be carried over
+    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert m["datasets"][0]["path"] == "source_scale"
+    assert m["datasets"][0]["coordinateTransformations"] == expected_source_scale_transform
+
+
+def test_unscaled_single_scale_export_t_scale_convention_overrides_storing_crop(tmp_path, tiny_5d_vigra_array_piper):
+    """
+    When reading a zarr with global t-scale convention, export has a dilemma:
+    Expressing a global offset (i.e. our crop) isn't consistent with the convention, so it's either
+    maintain the convention, or express the crop.
+    We figure if you're working with this convention, you need to stay in it to be compatible with
+    downstream tools, so prioritise the convention.
+    Specifically, nifti-zarr uses this convention; if you read nifti-zarr in, you probably need nifti-zarr out.
+    Most likely the behaviour here doesn't matter much in practice: The nifti-zarr convention is probably niche,
+    and expressing a crop as a global translation is also probably a niche use of the global transforms.
+    """
+    export_path = tmp_path / "test_multi_to_single.zarr"
+    source_op = tiny_5d_vigra_array_piper
+    progress = mock.Mock()
+    # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source source_scale after a 4/4/4 offset
+    export_offset = (0, 0, 4, 4, 4)
+    source_op.Output.meta.active_scale = "source_scale"
+    resolution_t = 0.1
+    # Slot pixel size is not precisely eq scaling factor (17/9 = 1.89). Would be accurate meta for e.g. bin-averaging.
+    # The export shouldn't care and use the slot meta as-is.
+    resolution_xyz = 2.0
+    units = {"t": "second", "z": "micrometer", "y": "micrometer", "x": "micrometer"}
+    source_op.Output.meta.axistags.setResolution("t", resolution_t)
+    source_op.Output.meta.axistags.setResolution("z", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
+    source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
+    source_op.Output.meta.axis_units = units
+    expected_multiscale_transform = [
+        {"type": "scale", "scale": [resolution_t, 1.0, 1.0, 1.0, 1.0]},
+        # no translation: this would be inconsistent (the multiscale's "intrinsic" system would be
+        # inbetween the scale and the translation; almost guaranteed to be misinterpreted by readers)
+    ]
+    expected_source_scale_transform = [
+        {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
+        {
+            "type": "translation",
+            "translation": pytest.approx([0.1, 0.0, 3.2, 1.0, 1.0]),
+        },  # source scale translation -- crop translation *not* added
+    ]
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
+        {
+            "name": "pyramid_with_global_t_convention",
+            "axes": [
+                {"name": "t", "type": "time", "unit": units["t"]},
+                {"name": "z", "type": "space", "unit": units["z"]},
+                {"name": "y", "type": "space", "unit": units["y"]},
+                {"name": "x", "type": "space", "unit": units["x"]},
+            ],  # Input metadata tzyx, but e.g. Probabilities output would be tczyx
+            "coordinateTransformations": [
+                # "global t-scale" convention means first scale value here is not 1.0 and for the
+                # dataset scales it is 1.0. The value must actually match the export pixel_size[t].
+                {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0]}
+            ],
+            "datasets": [
+                {
+                    "path": "raw_scale",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]},
+                        {"type": "translation", "translation": [0.1, 5.0, 2.0, 1.0]},
+                    ],
+                },
+                {
+                    "path": "source_scale",
+                    "coordinateTransformations": [
+                        # Normally the "scale" transform is the source of the slot's pixel size.
+                        # "scale" would have to be [0.1, 2.0, 2.0, 2.0] to match the slot meta
+                        # The export should use the slot meta; inject nonsense here to enforce it's not reused.
+                        # But keep t-scale 1.0 to be consistent with the "global t-scale" convention
+                        {"type": "scale", "scale": [1.0, 1.3, 3.7, 6.9]},
                         {"type": "translation", "translation": [0.1, 3.2, 1.0, 1.0]},
                     ],
                 },
@@ -207,7 +380,8 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
                     ],
                 },
             ],
-        }
+        },
+        shape_source={"raw_scale": (2, 17, 17, 17), "source_scale": (2, 9, 9, 9), "downscale": (2, 5, 5, 5)},
     )
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset)
@@ -231,31 +405,18 @@ def test_port_ome_zarr_metadata_single_scale_export(tmp_path, tiny_5d_vigra_arra
 
 
 def test_resized_single_scale_export(tmp_path, tiny_5d_vigra_array_piper):
-    """If the source slot has scale metadata, but the export is a single resized scale,
-    the scale key should be as specified as target; factors should be source resolution * resizing factor."""
+    """If the export is a single resized scale, the scale key should be as specified target;
+    `scale` should be source resolution * resizing factor.
+    Input `.scales` meta is irrelevant for this now that pixel size goes via axistags."""
     export_path = tmp_path / "test.zarr"
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    input_axes = ["c", "z", "y", "x"]  # Neuroglancer Precomputed axes for a change
-    # Input scales are only relevant here for the export to determine that xyz are scaling axes
-    input_scales: ShapesByScaleKey = OrderedDict(
-        [
-            ("raw_scale", tagged_shape(input_axes, (2, 15, 15, 15))),
-            ("downscale", tagged_shape(input_axes, (2, 5, 5, 5))),
-        ]
-    )
-    target_scales: ShapesByScaleKey = OrderedDict(
-        [
-            ("resized_scale", tagged_shape("tczyx", (2, 2, 10, 10, 10))),
-        ]
-    )
-    source_op.Output.meta.scales = input_scales
-    source_op.Output.meta.active_scale = "downscale"
+    target_scales = clearscale.BlueprintShapes({"resized_scale": tagged_shape("tczyx", (2, 2, 10, 10, 10))})
     source_op.Output.meta.axistags.setResolution("t", 1.0)
-    source_op.Output.meta.axistags.setResolution("z", 3.0)  # Reader would have determined that 15/5 = 3
+    source_op.Output.meta.axistags.setResolution("z", 3.0)
     source_op.Output.meta.axistags.setResolution("y", 3.0)
     source_op.Output.meta.axistags.setResolution("x", 3.0)
-    # Output is 10/5 upscaling of the source "downscale", so output scale is 3 / (10/5)
+    # Output is 10/5 upscaling of the (2, 2, 5, 5, 5) source array, so output scale is 3.0 / (10/5)
     expected_output_transform = [{"type": "scale", "scale": [1.0, 1.0, 1.5, 1.5, 1.5]}]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, None, target_scales)
@@ -280,7 +441,9 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"boop": "should be irrelevant"}})
+    source_op.Output.meta.scales = clearscale.Multiscale.from_shapes(
+        clearscale.BlueprintShapes({"source_scale": source_op.Output.meta.getTaggedShape()})
+    )
     source_op.Output.meta.active_scale = "source_scale"
     # Both Precomputed and OME-Zarr readers would read the pixel size of the source scale from the source metadata.
     # A hypothetical multiscale reader with no direct pixel size meta should still provide
@@ -293,7 +456,7 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
     # The export image is (2,2,5,5,5), (simulating a 0,_,3,3,3 crop of source_scale),
     # so downscale and upscale shapes here need to be relative to that shape.
     # Also make up-scaling factors anisotropic and non-integer for good measure.
-    target_scales: ShapesByScaleKey = OrderedDict(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -336,7 +499,6 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     progress = mock.Mock()
     # The tiny_5d_array is 5x5x5; in this test it represents a subregion of source_scale after a 3/3/3 offset
     export_offset = (0, 0, 3, 3, 3)
-    source_op.Output.meta.scales = OrderedDict({"noop": {"boop": "should be irrelevant"}})
     source_op.Output.meta.active_scale = "source_scale"
     resolution_t = 0.1
     resolution_xyz = 2.0  # Writers might round scaling factors. We have to assume this is intentional and maintain it.
@@ -346,7 +508,7 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
     source_op.Output.meta.axistags.setResolution("y", resolution_xyz)
     source_op.Output.meta.axistags.setResolution("x", resolution_xyz)
     source_op.Output.meta.axis_units = units
-    source_op.Output.meta.ome_zarr_translations = OMEZarrTranslations.from_multiscale_spec(
+    source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
             "name": "wonderful_pyramid",
             "axes": [
@@ -385,26 +547,30 @@ def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array
                     ],
                 },
             ],
-        }
+        },
+        shape_source=lambda path: (2, 5, 5, 5),
     )
-    target_scales: ShapesByScaleKey = OrderedDict(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("weird_upscale", tagged_shape("tczyx", (2, 2, 13, 12, 12))),
             ("downscale", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
         ]
     )
     expected_multiscale_transform = [
-        {"type": "scale", "scale": [0.1, 1.0, 1.0, 1.0, 1.0]},
-        {
-            "type": "translation",
-            "translation": [3.1, 0.0, 9.2, 8.1, 7.0],
-        },  # offset * input scale + source scale translation
+        {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
+        {"type": "translation", "translation": [0.0, 0.0, 6.0, 6.0, 6.0]},  # crop translation in physical units
     ]
     s_abs = 2.0  # Even if OpResize scales precisely, output should be computed based on the input's metadata.
-    upscale = [1.0, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
-    downscale = [1.0, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
-    expected_upscale_transform = [{"type": "scale", "scale": upscale}]
-    expected_downscale_transform = [{"type": "scale", "scale": downscale}]
+    upscale = [0.1, 1.0, s_abs * 5 / 13, s_abs * 5 / 12, s_abs * 5 / 12]
+    downscale = [0.1, 1.0, s_abs * 5 / 2, s_abs * 5 / 2, s_abs * 5 / 2]
+    expected_upscale_transform = [
+        {"type": "scale", "scale": upscale},
+        {"type": "translation", "translation": [3.1, 0.0, 3.2, 2.1, 1.0]},  # source scale translation
+    ]
+    expected_downscale_transform = [
+        {"type": "scale", "scale": downscale},
+        {"type": "translation", "translation": [3.1, 0.0, 3.2, 2.1, 1.0]},  # source scale translation
+    ]
 
     write_ome_zarr(str(export_path), source_op.Output, progress, export_offset, target_scales)
 
@@ -438,7 +604,7 @@ def test_respects_interpolation_order(tmp_path, tiny_5d_vigra_array_piper):
     export_path = tmp_path
     source_op = tiny_5d_vigra_array_piper
     progress = mock.Mock()
-    target_scales: ShapesByScaleKey = OrderedDict(
+    target_scales = clearscale.BlueprintShapes(
         [
             ("0", tagged_shape("tczyx", (2, 2, 5, 5, 5))),
             ("1", tagged_shape("tczyx", (2, 2, 2, 2, 2))),
@@ -520,7 +686,9 @@ def test_generate_default_target_scales(shape, expected_shapes):
     [
         (  # Simple: match input scales in OME-Zarr order
             tagged_shape("yx", (1, 1)),
-            OrderedDict([("s0", tagged_shape("yx", (2, 2))), ("source_scale", tagged_shape("yx", (1, 1)))]),
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("yx", (2, 2))), ("source_scale", tagged_shape("yx", (1, 1)))])
+            ),
             OrderedDict(
                 [
                     ("s0", tagged_shape("tczyx", (1, 1, 1, 2, 2))),
@@ -530,7 +698,9 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Input no channels + default scaling would create different scales than input has
             tagged_shape("yxc", (500, 500, 3)),
-            OrderedDict([("s0", tagged_shape("yx", (1100, 1100))), ("source_scale", tagged_shape("yx", (500, 500)))]),
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("yx", (1100, 1100))), ("source_scale", tagged_shape("yx", (500, 500)))]),
+            ),
             OrderedDict(
                 [
                     ("s0", tagged_shape("tczyx", (1, 3, 1, 1100, 1100))),
@@ -540,8 +710,8 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Different number of channels in in put and export; input downscale was ceil-rounded (i.e. not like ilastik does)
             tagged_shape("yxc", (500, 500, 3)),
-            OrderedDict(
-                [("s0", tagged_shape("cyx", (2, 999, 999))), ("source_scale", tagged_shape("cyx", (2, 500, 500)))]
+            clearscale.Multiscale.from_shapes(
+                dict([("s0", tagged_shape("cyx", (2, 999, 999))), ("source_scale", tagged_shape("cyx", (2, 500, 500)))])
             ),
             OrderedDict(
                 [
@@ -552,18 +722,42 @@ def test_generate_default_target_scales(shape, expected_shapes):
         ),
         (  # Default scaling would not scale the input + export is cropped + source is middle scale
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            OrderedDict(
-                [
-                    ("0", tagged_shape("czyx", (2, 75, 75, 75))),
-                    ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
-                    ("2", tagged_shape("czyx", (2, 8, 8, 8))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("0", tagged_shape("czyx", (2, 75, 75, 75))),
+                        ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
+                        ("2", tagged_shape("czyx", (2, 8, 8, 8))),
+                    ]
+                )
             ),
             OrderedDict(
                 [
                     ("0", tagged_shape("tczyx", (1, 3, 48, 48, 48))),
                     ("source_scale", tagged_shape("tczyx", (1, 3, 16, 16, 16))),
                     ("2", tagged_shape("tczyx", (1, 3, 5, 5, 5))),
+                ]
+            ),
+        ),
+        (
+            # Weird case: input is a framerate multiscale, export crops t.
+            # OpResize refuses to scale along t, so all output scales need to be identical.
+            # Note that OME-Zarr allows identical shapes at different scales.
+            tagged_shape("tyxc", (5, 25, 25, 2)),
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("0", tagged_shape("cyxt", (3, 25, 25, 32))),
+                        ("source_scale", tagged_shape("cyxt", (3, 25, 25, 11))),
+                        ("2", tagged_shape("cyxt", (3, 25, 25, 3))),
+                    ]
+                )
+            ),
+            OrderedDict(
+                [
+                    ("0", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
+                    ("source_scale", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
+                    ("2", tagged_shape("tczyx", (5, 2, 1, 25, 25))),
                 ]
             ),
         ),
@@ -579,12 +773,14 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
     [
         (  # Simple: match input scales in original order, even if ilastik default would not downscale
             tagged_shape("yx", (4, 4)),
-            OrderedDict(
-                [
-                    ("source_scale", tagged_shape("yx", (4, 4))),
-                    ("s2", tagged_shape("yx", (2, 2))),
-                    ("s3", tagged_shape("yx", (1, 1))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("source_scale", tagged_shape("yx", (4, 4))),
+                        ("s2", tagged_shape("yx", (2, 2))),
+                        ("s3", tagged_shape("yx", (1, 1))),
+                    ]
+                )
             ),
             OrderedDict(
                 [
@@ -596,13 +792,13 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Input had no channels + ilastik default _would_ downscale
             tagged_shape("yxc", (1000, 1000, 3)),
-            OrderedDict([("source_scale", tagged_shape("yx", (1000, 1000)))]),
+            clearscale.Multiscale.from_shapes(dict([("source_scale", tagged_shape("yx", (1000, 1000)))])),
             OrderedDict([("source_scale", tagged_shape("tczyx", (1, 3, 1, 1000, 1000)))]),
         ),
         (  # Different number of channels in input and export; input downscale was ceil-rounded (i.e. not like ilastik does)
             tagged_shape("yxc", (531, 531, 3)),
-            OrderedDict(
-                [("source_scale", tagged_shape("cyx", (2, 531, 531))), ("s2", tagged_shape("cyx", (2, 266, 266)))]
+            clearscale.Multiscale.from_shapes(
+                dict([("source_scale", tagged_shape("cyx", (2, 531, 531))), ("s2", tagged_shape("cyx", (2, 266, 266)))])
             ),
             OrderedDict(
                 [
@@ -613,13 +809,15 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped + source is middle scale (upscales should be excluded)
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            OrderedDict(
-                [
-                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
-                    ("1", tagged_shape("czyx", (2, 75, 75, 75))),
-                    ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
-                    ("4", tagged_shape("czyx", (2, 8, 8, 8))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                        ("1", tagged_shape("czyx", (2, 75, 75, 75))),
+                        ("source_scale", tagged_shape("czyx", (2, 25, 25, 25))),
+                        ("4", tagged_shape("czyx", (2, 8, 8, 8))),
+                    ]
+                )
             ),
             OrderedDict(
                 [
@@ -630,11 +828,13 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped + input has no channels
             tagged_shape("zyxc", (16, 16, 16, 3)),
-            OrderedDict(
-                [
-                    ("source_scale", tagged_shape("zyx", (25, 25, 25))),
-                    ("4", tagged_shape("zyx", (8, 8, 8))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("source_scale", tagged_shape("zyx", (25, 25, 25))),
+                        ("4", tagged_shape("zyx", (8, 8, 8))),
+                    ]
+                )
             ),
             OrderedDict(
                 [
@@ -645,14 +845,16 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export is cropped tiny (matching all downscales would lead to 0 shapes) + makes an axis singleton
             tagged_shape("zyxc", (19, 7, 1, 3)),
-            OrderedDict(
-                [
-                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
-                    ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
-                    ("2", tagged_shape("czyx", (2, 25, 25, 25))),
-                    ("3", tagged_shape("czyx", (2, 8, 8, 8))),
-                    ("4", tagged_shape("czyx", (2, 2, 2, 2))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                        ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
+                        ("2", tagged_shape("czyx", (2, 25, 25, 25))),
+                        ("3", tagged_shape("czyx", (2, 8, 8, 8))),
+                        ("4", tagged_shape("czyx", (2, 2, 2, 2))),
+                    ]
+                )
             ),
             OrderedDict(
                 [
@@ -663,12 +865,14 @@ def test_match_target_scales_to_input(shape, input_scales, expected_shapes):
         ),
         (  # Export cropped to 1px
             tagged_shape("zyxc", (1, 1, 1, 2)),
-            OrderedDict(
-                [
-                    ("0", tagged_shape("czyx", (2, 225, 225, 225))),
-                    ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
-                    ("2", tagged_shape("czyx", (2, 25, 25, 25))),
-                ]
+            clearscale.Multiscale.from_shapes(
+                dict(
+                    [
+                        ("0", tagged_shape("czyx", (2, 225, 225, 225))),
+                        ("source_scale", tagged_shape("czyx", (2, 75, 75, 75))),
+                        ("2", tagged_shape("czyx", (2, 25, 25, 25))),
+                    ]
+                )
             ),
             OrderedDict(
                 [

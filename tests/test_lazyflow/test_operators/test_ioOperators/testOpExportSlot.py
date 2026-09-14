@@ -26,6 +26,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 import numpy
+import pytest
 import vigra
 import z5py
 
@@ -92,7 +93,9 @@ class TestOpExportSlot(object):
         opExport.OutputFormat.setValue("single-scale OME-Zarr")
         opExport.OutputFilenameFormat.setValue(self._tmpdir + "/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
         opExport.CoordinateOffset.setValue((10, 20))
-        expected_transformations = [
+        expected_dataset_transformations = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]}]
+        # Crop offset is written as a global translation
+        expected_multiscale_transformations = [
             {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]},
             {"type": "translation", "translation": [0.0, 0.0, 0.0, 10.0, 20.0]},
         ]
@@ -110,7 +113,14 @@ class TestOpExportSlot(object):
             read_data = opRead.Output[:].wait()
             numpy.testing.assert_array_equal(read_data, expected_data)
             written_file = z5py.ZarrFile(str(expected_export_path), "r")
-            assert written_file.attrs["multiscales"][0]["coordinateTransformations"] == expected_transformations
+            assert (
+                written_file.attrs["multiscales"][0]["datasets"][0]["coordinateTransformations"]
+                == expected_dataset_transformations
+            )
+            assert "coordinateTransformations" in written_file.attrs["multiscales"][0]
+            assert (
+                written_file.attrs["multiscales"][0]["coordinateTransformations"] == expected_multiscale_transformations
+            )
         finally:
             opRead.cleanUp()
 
@@ -136,7 +146,7 @@ class TestOpExportSlot(object):
         assert Path(opExport.ExportPath.value) == expected_export_path
 
         assert opExport.TargetScales.ready()
-        expected_scales: multiscaleStore.Multiscale = OrderedDict(
+        expected_scales = OrderedDict(
             {
                 "s0": OrderedDict(zip("tczyx", (1, 1, 1, 550, 510))),
                 "s1": OrderedDict(zip("tczyx", (1, 1, 1, 275, 255))),
@@ -222,6 +232,10 @@ class TestOpExportSlot(object):
                         "path": "s0",
                     }
                 ],
+                "coordinateTransformations": [
+                    {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
+                ],
                 "version": "0.4",
             }
         ]
@@ -236,11 +250,14 @@ class TestOpExportSlot(object):
                 ],
                 "coordinateTransformations": [
                     {"scale": [1.0, 1.0, 1.0, 1.0, 1.0], "type": "scale"},
-                    {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                    {"translation": [0.0, 0.0, 0.0, 0.0, 0.0], "type": "translation"},
                 ],
                 "datasets": [
                     {
-                        "coordinateTransformations": [{"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"}],
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 1.0, 1.0, 1.4, 1.4], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0, 7.62, 8.49], "type": "translation"},
+                        ],
                         "path": "s1",
                     }
                 ],
@@ -296,6 +313,141 @@ class TestOpExportSlot(object):
             assert os.path.exists(export_path)
             written_file = z5py.ZarrFile(export_path, "r")
             assert written_file.attrs["multiscales"] == expected_meta_s1
+
+    def test_ome_zarr_roundtrip_multiscale(self):
+        """
+        Ensure metadata roundtrips correctly when re-exporting a multiscale dataset as-is.
+        Output metadata won't/shouldn't be *identical* to input. Even when just re-exporting
+        the loaded data unprocessed, the export is actually a new multiscale. It's just
+        scaled to the same scaling levels as the source pyramid. ilastik's scaling implementation
+        (OpResize) will not reproduce the downscaled source data.
+        The exported metadata must correctly describe the export, not carry over metadata
+        from the source falsely. See detailed comment below.
+        """
+        input_meta = [
+            {
+                "name": "input.zarr",
+                "type": "sample",
+                "version": "0.4",
+                "axes": [
+                    {"type": "space", "name": "z", "unit": "micrometer"},
+                    {"type": "space", "name": "y", "unit": "nanometer"},
+                    {"type": "space", "name": "x", "unit": "nanometer"},
+                ],
+                "datasets": [
+                    {
+                        "path": "s0",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 0.2, 0.2], "type": "scale"},
+                            {"translation": [0.0, 0.0, 0.0], "type": "translation"},
+                        ],
+                    },
+                    {
+                        "path": "s1",
+                        "coordinateTransformations": [
+                            {"scale": [1.0, 0.6, 0.6], "type": "scale"},
+                            {"translation": [0.0, 7.62, 8.49], "type": "translation"},
+                        ],
+                    },
+                ],
+                "coordinateTransformations": [
+                    {"scale": [0.3, 1.0, 1.0], "type": "scale"},
+                    {"translation": [2.0, 0.6, 0.0], "type": "translation"},
+                ],
+            }
+        ]
+        # Expected written meta is the same as input, but:
+        # - tczyx
+        # - no name
+        # - "s1" transformations are discarded. The exported "s1" is a newly generated downscale.
+        expected_ms = {
+            "axes": [
+                {"name": "t", "type": "time"},
+                {"name": "c", "type": "channel"},
+                {"name": "z", "type": "space", "unit": "micrometer"},
+                {"name": "y", "type": "space", "unit": "nanometer"},
+                {"name": "x", "type": "space", "unit": "nanometer"},
+            ],
+            "datasets": [
+                {
+                    "coordinateTransformations": [
+                        {"scale": [1.0, 1.0, 1.0, 0.2, 0.2], "type": "scale"},
+                    ],
+                    "path": "s0",
+                },
+                {
+                    "coordinateTransformations": [
+                        {"scale": [1.0, 1.0, 1.0, 0.6, 0.6], "type": "scale"},
+                    ],
+                    "path": "s1",
+                },
+            ],
+            "coordinateTransformations": [
+                {"scale": [1.0, 1.0, 0.3, 1.0, 1.0], "type": "scale"},
+                {"translation": [0.0, 0.0, 2.0, 0.6, 0.0], "type": "translation"},
+            ],
+            "version": "0.4",
+            "metadata": {
+                "description": "ilastik's lazyflow.operators.opResize.OpResize "
+                "is a lazy implementation of skimage.transform.resize.",
+                "kwargs": {"anti_aliasing": True, "order": 1, "preserve_range": True},
+                "method": "skimage.transform.resize",
+                "version": "0.24.0",
+            },
+        }
+
+        input_path = self._tmpdir + "/input.zarr"
+        file = z5py.ZarrFile(input_path, "w")
+        data = numpy.random.random((16, 15, 15)).astype(numpy.float32)
+        downscale = data[:, ::3, ::3]
+        file.create_dataset("s0", data=data)
+        file.create_dataset("s1", data=downscale)
+        file.attrs["multiscales"] = input_meta
+
+        noop = Operator(graph=Graph())  # parent so that OpInputDataReader doesn't drop into single-scale mode
+
+        # Raw scale first
+        export_path = self._tmpdir + "/test_export_multi.zarr"
+        with Pipeline(parent=noop) as pipeline:
+            pipeline.add(OpInputDataReader, FilePath=input_path + "/s0")
+            opExport = pipeline.add(OpExportSlot, OutputFormat="multi-scale OME-Zarr", OutputFilenameFormat=export_path)
+            opExport.run_export()
+
+            assert os.path.exists(export_path)
+            written_file = z5py.ZarrFile(export_path, "r")
+            assert len(written_file.attrs["multiscales"]) == 1
+            written_ms = written_file.attrs["multiscales"][0]
+            assert written_ms["axes"] == expected_ms["axes"]
+            assert written_ms["metadata"] == expected_ms["metadata"]
+            assert written_ms["version"] == expected_ms["version"]
+            assert "coordinateTransformations" in written_ms
+            self._assert_transforms_eq(
+                written_ms["coordinateTransformations"], expected_ms["coordinateTransformations"]
+            )
+            assert len(written_ms["datasets"]) == len(expected_ms["datasets"])
+            for written_ds, expected_ds in zip(written_ms["datasets"], expected_ms["datasets"]):
+                assert written_ds["path"] == expected_ds["path"]
+                self._assert_transforms_eq(
+                    written_ds["coordinateTransformations"], expected_ds["coordinateTransformations"]
+                )
+
+    @staticmethod
+    def _assert_transforms_eq(written_transforms, expected_transforms):
+        assert len(written_transforms) == len(expected_transforms)
+        if len(expected_transforms) == 0:
+            return
+        assert "scale" in written_transforms[0]
+        written_scale = written_transforms[0]["scale"]
+        expected_scale = expected_transforms[0]["scale"]
+        assert len(written_scale) == len(expected_scale)
+        assert written_scale == pytest.approx(expected_scale, abs=1e-15)
+        if len(expected_transforms) == 1:
+            return
+        assert "translation" in written_transforms[1]
+        written_transl = written_transforms[1]["translation"]
+        expected_transl = expected_transforms[1]["translation"]
+        assert len(written_transl) == len(expected_transl)
+        assert written_transl == pytest.approx(expected_transl, abs=1e-15)
 
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)
