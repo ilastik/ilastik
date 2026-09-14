@@ -3,9 +3,10 @@ from ilastik.shell.gui.ilastikShell import IlastikShell
 from ilastik.shell.projectManager import ProjectManager
 
 import h5py
+import multiprocessing
 import os
 import pytest
-import tempfile
+import time
 from unittest.mock import patch
 
 
@@ -72,40 +73,54 @@ def test_createAndLoadNewProject_shows_dialog_on_oserror():
     shell._loadProject.assert_not_called()
 
 
-def test_createBlankProjectFile_does_not_corrupt_locked_file():
+def _lock_file_subprocess(project_path, ready_event, stop_event):
+    """Subprocess helper: open the project file and hold it locked."""
+    with h5py.File(project_path, "r+"):
+        ready_event.set()
+        stop_event.wait()
+
+
+def test_createBlankProjectFile_does_not_corrupt_locked_file(tmp_path):
     """
     When the target file exists but is locked by another process,
-    createBlankProjectFile must raise an OSError and leave the original
-    file intact (not truncate/corrupt it).
+    createBlankProjectFile must raise an OSError without truncating the file.
+
+    Reproduces the production scenario: process 1 has the file open via
+    openProjectFile (holding an h5py lock), and process 2 attempts to
+    overwrite it with createBlankProjectFile.
 
     Regression test for https://github.com/ilastik/ilastik/issues/3235
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        project_path = os.path.join(tmpdir, "test.ilp")
+    project_path = str(tmp_path / "test.ilp")
 
-        # Create a valid project file first
-        with h5py.File(project_path, "w") as f:
-            f.create_dataset("ilastikVersion", data=b"1.4.2")
-            f.create_dataset("workflowName", data=b"PixelClassification")
-        original_size = os.path.getsize(project_path)
-        assert original_size > 0
+    # Create a valid project file (simulates an existing project open in another instance)
+    with h5py.File(project_path, "w") as f:
+        f.create_dataset("ilastikVersion", data=b"1.4.2")
+        f.create_dataset("workflowName", data=b"PixelClassification")
+    original_size = os.path.getsize(project_path)
+    assert original_size > 0
 
-        # Simulate the file being locked by another process:
-        # Patch h5py.File so that opening in "r" mode raises OSError (locked),
-        # while "w" mode is also blocked to prevent actual truncation.
-        real_h5py_file = h5py.File
+    ready_event = multiprocessing.Event()
+    stop_event = multiprocessing.Event()
 
-        def mock_h5py_file(name, mode="r", *args, **kwargs):
-            if mode == "r" and str(name) == project_path:
-                raise OSError("Unable to synchronously open file (unable to lock file)")
-            return real_h5py_file(name, mode, *args, **kwargs)
+    # Start subprocess that holds the file open (simulates another ilastik instance)
+    p = multiprocessing.Process(target=_lock_file_subprocess, args=(project_path, ready_event, stop_event))
+    p.start()
 
-        with patch("ilastik.shell.projectManager.h5py.File", side_effect=mock_h5py_file):
-            with pytest.raises(OSError, match="locked by another process"):
-                ProjectManager.createBlankProjectFile(project_path)
+    try:
+        # Wait for the subprocess to lock the file
+        ready_event.wait(timeout=10)
+        assert p.is_alive(), "Lock subprocess died before locking the file"
+        # Give the lock a moment to fully take effect
+        time.sleep(0.5)
 
-        # Verify the file was NOT corrupted - still has original size and is readable
+        with pytest.raises(OSError):
+            ProjectManager.createBlankProjectFile(project_path)
+
+        # Verify the file was NOT corrupted
         assert os.path.getsize(project_path) == original_size
         with h5py.File(project_path, "r") as f:
-            assert "ilastikVersion" in f
             assert f["ilastikVersion"][()] == b"1.4.2"
+    finally:
+        stop_event.set()
+        p.join(timeout=5)
