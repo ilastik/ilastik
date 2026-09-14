@@ -434,20 +434,13 @@ class ObjectClassificationGui(LabelingGui):
 
     @Slot()
     def updateShowSegmentationCheckbox(self):
-        segLayerCount = 0
         visibleCount = 0
         for layer in self.layerstack:
             if "Binary image" in layer.name:
-                segLayerCount += 1
                 if layer.visible:
                     visibleCount += 1
 
-        if visibleCount == 0:
-            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.Unchecked)
-        elif segLayerCount == visibleCount:
-            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.Checked)
-        else:
-            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
+        self._viewerControlUi.checkShowSegmentation.setChecked(visibleCount > 0)
 
     @Slot()
     def handleSubsetFeaturesClicked(self):
@@ -708,9 +701,7 @@ class ObjectClassificationGui(LabelingGui):
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
-        pixel_vc = os.path.normpath(os.path.join(localDir, "..", "pixelClassification", "viewerControls.ui"))
-
-        self._viewerControlUi = uic.loadUi(pixel_vc)
+        self._viewerControlUi = uic.loadUi(os.path.join(localDir, "viewerControls.ui"))
 
         # Connect checkboxes
         def nextCheckState(checkbox):
@@ -1083,6 +1074,8 @@ class ObjectClassificationGui(LabelingGui):
         super(ObjectClassificationGui, self).setVisible(visible)
 
         if visible:
+            self.updateShowSegmentationCheckbox()
+
             subslot_index = self.op.current_view_index()
             if subslot_index == -1:
                 return
