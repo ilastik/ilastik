@@ -15,6 +15,7 @@ dependencies:
   - ilastik-feature-selection
   - ilastikrag >=0.1.4
   - ilastik-carving-tools
+  - imagecodecs
   - jsonschema
   - mamutexport
   - marching_cubes
