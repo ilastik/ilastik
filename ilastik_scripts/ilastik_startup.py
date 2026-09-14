@@ -143,6 +143,53 @@ def fix_macos() -> None:
     ctypes.util.find_library = find_library
 
 
+# GL/EGL/glvnd libraries that, when bundled, shadow the host GL stack and break
+# Qt context creation on software-rendered or driver-specific setups.
+# See https://github.com/ilastik/ilastik/issues/3242
+_GL_LIB_PATTERNS = (
+    "libGL.so*",
+    "libGLX.so*",
+    "libGLdispatch.so*",
+    "libEGL.so*",
+    "libxcb-glx.so*",
+    "libdrm*.so*",
+)
+
+
+def fix_linux_gl() -> None:
+    """Remove bundled GL/glvnd/libdrm libraries so the host GL stack is used.
+
+    GL drivers are inherently host-specific and should not be shipped with the
+    application.  On systems without a GPU (e.g. VNC / llvmpipe), the bundled
+    glvnd dispatch layer finds no vendor driver and Qt cannot create any OpenGL
+    context, making the viewer unusable.
+
+    Renaming the files (instead of deleting) keeps them available for debugging
+    and avoids issues with read-only filesystems.  The dynamic linker simply
+    falls through to the system Mesa stack.
+    """
+    if platform.system() != "Linux":
+        return
+
+    # Locate the bundle's lib/ directory (next to this script's package root).
+    for candidate in pathlib.Path(__file__).resolve().parents:
+        lib_dir = candidate / "lib"
+        if lib_dir.is_dir():
+            break
+    else:
+        return
+
+    for pattern in _GL_LIB_PATTERNS:
+        for path in lib_dir.glob(pattern):
+            if path.is_file() and not path.suffix == ".disabled":
+                disabled = path.with_name(path.name + ".disabled")
+                try:
+                    path.rename(disabled)
+                    logger.debug("Disabled bundled GL library: %s", path.name)
+                except OSError:
+                    logger.debug("Could not disable bundled GL library: %s", path.name)
+
+
 def fix_ssl() -> None:
     """
     Paths to the CA certificates file and the CA certificates dir are hard-coded into openssl
@@ -237,6 +284,7 @@ def fix_ssl() -> None:
 def main():
     path_setup()
     fix_macos()
+    fix_linux_gl()
     fix_ssl()
 
     from ilastik.__main__ import main
