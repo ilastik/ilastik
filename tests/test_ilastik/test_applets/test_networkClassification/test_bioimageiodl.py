@@ -63,3 +63,48 @@ def test_is_zipfile_returns_false_nonexisting(pattern: str):
 def test_is_zipfile_with_existing_files(existing_files: tuple[Path, bool]):
     filename, expection = existing_files
     assert bioimageiodl._is_existing_local_zip_file(filename) == expection
+
+
+def test_progress_callback_skips_when_n_exceeds_total():
+    """Progress callback must not emit values > 100% when n > total.
+
+    This happens when the server uses content-encoding (e.g. zstd) and
+    httpx transparently decompresses, making decompressed bytes larger
+    than Content-Length. Regression test for #3166.
+    """
+    from unittest.mock import MagicMock
+
+    signal = MagicMock()
+
+    # Replicate the _callback pattern from BioImageDownloader.run()
+    def _cb(n: int, total: int, **kwargs):
+        if total > 0 and n <= total:
+            signal.emit(int(n / total * 100))
+
+    # Normal case: n < total
+    _cb(500, 1000)
+    signal.emit.assert_called_with(50)
+
+    signal.reset_mock()
+
+    # Exact case: n == total
+    _cb(1000, 1000)
+    signal.emit.assert_called_with(100)
+
+    signal.reset_mock()
+
+    # Over case: n > total (content-encoding mismatch) - should NOT emit
+    _cb(1970, 1000)
+    signal.emit.assert_not_called()
+
+    signal.reset_mock()
+
+    # Zero total: should NOT emit
+    _cb(0, 0)
+    signal.emit.assert_not_called()
+
+    signal.reset_mock()
+
+    # Zero n: should emit 0
+    _cb(0, 1000)
+    signal.emit.assert_called_with(0)
