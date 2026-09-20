@@ -410,7 +410,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @Slot()
     def handleShowSegmentationClicked(self):
-        checked = self._viewerControlUi.checkShowSegmentation.isChecked()
+        checked = self._viewerControlUi.checkShowBinaryImage.isChecked()
         for layer in self.layerstack:
             if "Binary image" in layer.name:
                 layer.visible = checked
@@ -440,7 +440,7 @@ class ObjectClassificationGui(LabelingGui):
                 if layer.visible:
                     visibleCount += 1
 
-        self._viewerControlUi.checkShowSegmentation.setChecked(visibleCount > 0)
+        self._viewerControlUi.checkShowBinaryImage.setChecked(visibleCount > 0)
 
     @Slot()
     def handleSubsetFeaturesClicked(self):
@@ -710,12 +710,12 @@ class ObjectClassificationGui(LabelingGui):
         self._viewerControlUi.checkShowPredictions.nextCheckState = partial(
             nextCheckState, self._viewerControlUi.checkShowPredictions
         )
-        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(
-            nextCheckState, self._viewerControlUi.checkShowSegmentation
+        self._viewerControlUi.checkShowBinaryImage.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowBinaryImage
         )
 
         self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
-        self._viewerControlUi.checkShowSegmentation.clicked.connect(self.handleShowSegmentationClicked)
+        self._viewerControlUi.checkShowBinaryImage.clicked.connect(self.handleShowSegmentationClicked)
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
@@ -742,10 +742,10 @@ class ObjectClassificationGui(LabelingGui):
             ActionInfo(
                 shortcutGroupName,
                 "Toggle Segmentaton",
-                "Toggle Segmentaton Layer Visibility",
-                self._viewerControlUi.checkShowSegmentation.click,
-                self._viewerControlUi.checkShowSegmentation,
-                self._viewerControlUi.checkShowSegmentation,
+                "Toggle Binary Image Layer Visibility",
+                self._viewerControlUi.checkShowBinaryImage.click,
+                self._viewerControlUi.checkShowBinaryImage,
+                self._viewerControlUi.checkShowBinaryImage,
             ),
         )
 

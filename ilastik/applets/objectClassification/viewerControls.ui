@@ -35,7 +35,7 @@
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QCheckBox" name="checkShowSegmentation">
+      <widget class="QCheckBox" name="checkShowBinaryImage">
        <property name="text">
         <string>Binary Image</string>
        </property>
