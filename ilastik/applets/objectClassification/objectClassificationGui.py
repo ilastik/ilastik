@@ -409,7 +409,7 @@ class ObjectClassificationGui(LabelingGui):
                 layer.visible = checked
 
     @Slot()
-    def handleShowSegmentationClicked(self):
+    def handleShowBinaryImageClicked(self):
         checked = self._viewerControlUi.checkShowBinaryImage.isChecked()
         for layer in self.layerstack:
             if "Binary image" in layer.name:
@@ -433,7 +433,7 @@ class ObjectClassificationGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     @Slot()
-    def updateShowSegmentationCheckbox(self):
+    def updateShowBinaryImageCheckbox(self):
         visibleCount = 0
         for layer in self.layerstack:
             if "Binary image" in layer.name:
@@ -715,7 +715,7 @@ class ObjectClassificationGui(LabelingGui):
         )
 
         self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
-        self._viewerControlUi.checkShowBinaryImage.clicked.connect(self.handleShowSegmentationClicked)
+        self._viewerControlUi.checkShowBinaryImage.clicked.connect(self.handleShowBinaryImageClicked)
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
@@ -741,7 +741,7 @@ class ObjectClassificationGui(LabelingGui):
             "s",
             ActionInfo(
                 shortcutGroupName,
-                "Toggle Segmentaton",
+                "Toggle Binary Image",
                 "Toggle Binary Image Layer Visibility",
                 self._viewerControlUi.checkShowBinaryImage.click,
                 self._viewerControlUi.checkShowBinaryImage,
@@ -873,7 +873,7 @@ class ObjectClassificationGui(LabelingGui):
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
             binLayer.visible = True  # matches the checkbox's initial checked state in viewerControls.ui
-            binLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
+            binLayer.visibleChanged.connect(self.updateShowBinaryImageCheckbox)
             binLayer.opacity = 1.0
             binLayer.setToolTip("Segmented objects, binary mask")
             layers.append(binLayer)
