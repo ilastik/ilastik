@@ -872,7 +872,7 @@ class ObjectClassificationGui(LabelingGui):
             binaryimagesrc = createDataSource(segmentedSlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
-            binLayer.visible = True
+            binLayer.visible = True  # matches the checkbox's initial checked state in viewerControls.ui
             binLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
             binLayer.opacity = 1.0
             binLayer.setToolTip("Segmented objects, binary mask")
@@ -1074,8 +1074,6 @@ class ObjectClassificationGui(LabelingGui):
         super(ObjectClassificationGui, self).setVisible(visible)
 
         if visible:
-            self.updateShowSegmentationCheckbox()
-
             subslot_index = self.op.current_view_index()
             if subslot_index == -1:
                 return
