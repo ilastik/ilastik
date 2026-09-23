@@ -118,8 +118,15 @@ class TableExporter(ExportingOperator):
         obj_count = list(objects_per_frame(label_image))
         ids = list(ilastik_ids(obj_count))
 
-        file_path = settings["file path"]
-        file_path = self.format_path(lane_index, file_path)
+        #file_path = settings["file path"]
+        #file_path = self.format_path(lane_index, file_path)
+
+        if self._path_formatter_factory is not None:
+            formatter = self._path_formatter_factory.for_lane(lane_index)
+            file_path = formatter.format_path(settings["file path"])
+        else:
+            file_path = settings["file path"]
+
 
         export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
