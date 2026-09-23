@@ -770,9 +770,10 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     }
     array_mock = mock.Mock()
     array_mock.shape = (3, 2, 11, 10, 9)
-    # 1.0 is the default scale in OME-Zarr. It will be mapped to the vigra default resolution 0.0
-    expected_resolution = dataset_scale.copy()
-    expected_resolution["t"] = 0
+    expected_axistag_resolution = dataset_scale.copy()
+    # scale[c]=0 is normalised to pixel size 1.0: 0 is nonsense (a genuine 0-scale would collapse the axis), strictly
+    # speaking even invalid according to spec ("MUST [default] to 1.0 if there is no downsampling along the axis.")
+    expected_axistag_resolution["c"] = 1.0
 
     reader = OpOMEZarrMultiscaleReader(graph=graph)
     with patch_ome_zarr(ome_spec_v0_4, "file:///noop", array_mock):
@@ -784,7 +785,7 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     assert reader.Output.meta.axis_units == {a: "" for a in dataset_scale}
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
-        assert tag.resolution == expected_resolution[tag.key]
+        assert tag.resolution == expected_axistag_resolution[tag.key]
 
 
 def test_write_ome_zarr_single_scale(graph, tmp_path):

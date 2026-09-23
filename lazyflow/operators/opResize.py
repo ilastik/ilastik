@@ -145,6 +145,9 @@ class OpResize(Operator):
         - Pad with halo to request sufficient subregion of raw image for antialiasing and interpolation
         - Compute scaled coordinates of source pixels within the padded blurred raw subregion
         - Use map_coordinates to interpolate values at those source coordinates
+
+        If this implementation changes, the description in `write_ome_zarr.py` that calls
+        it "a lazy implementation of skimage.transform.resize" should be updated.
         """
         assert slot is self.ResizedImage, "Unknown output slot"
 

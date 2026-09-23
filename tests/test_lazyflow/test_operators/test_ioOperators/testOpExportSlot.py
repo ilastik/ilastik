@@ -448,6 +448,7 @@ class TestOpExportSlot(object):
         expected_transl = expected_transforms[1]["translation"]
         assert len(written_transl) == len(expected_transl)
         assert written_transl == pytest.approx(expected_transl, abs=1e-15)
+        assert len(expected_transforms) <= 2, "Should never be more than scale(+translation)"
 
     def testBasic_Npy(self):
         data = numpy.random.random((100, 100)).astype(numpy.float32)

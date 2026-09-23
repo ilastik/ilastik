@@ -233,7 +233,7 @@ def test_unscaled_single_scale_export_round_trips_t_convention(tmp_path, tiny_5d
     # When no actual scaling is done by ilastik, input scale should be carried over unmodified even if imprecise.
     expected_source_scale_transform = [
         {"type": "scale", "scale": [1.0, 1.0, resolution_xyz, resolution_xyz, resolution_xyz]},
-        {"type": "translation", "translation": pytest.approx([0.5, 0.0, 3.2, 1.0, 1.0])},  # source scale translation
+        {"type": "translation", "translation": [0.5, 0.0, 3.2, 1.0, 1.0]},  # source scale translation
     ]
     source_op.Output.meta.scales = clearscale.Multiscale.from_ome_zarr(
         {
