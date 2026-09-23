@@ -309,9 +309,7 @@ class TestOpInputDataReaderWithOMEZarr:
             ("some.zarr/A/1/0", "s0", "s1"),  # well (./row/column/field-of-view/scales)
         ],
     )
-    def ome_zarr_store_on_disc(
-        self, tmp_path, request, monkeypatch
-    ) -> Tuple[PathTuple, List[numpy.array], clearscale.Multiscale]:
+    def ome_zarr_store_on_disc(self, tmp_path, request) -> Tuple[PathTuple, List[numpy.array], clearscale.Multiscale]:
         """Sets up a zarr store of a random image at raw scale and a downscale.
         Returns dataset paths, datasets, and the metadata expected on the
         reader's output slot."""

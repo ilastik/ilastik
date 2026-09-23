@@ -49,7 +49,7 @@ class DatasetColumn:
 def _dims_to_display_string(scale: clearscale.Scale, dtype: Type["numpy.number"]) -> str:
     """Generate labels to put into the scale combobox / to display in the table.
     Aim: XYZ dimensions + data size, but in original axis order"""
-    xyz_shape = scale.shape.without_axes_except("xyz").to_list()
+    xyz_shape = scale.shape.without_axes_except("xyz").values_list()
     shape_string = " / ".join(str(size) for size in xyz_shape)
     scale_file_size = bigintprod(xyz_shape) * dtype().nbytes
     size_labels = {1e15: "PB", 1e12: "TB", 1e9: "GB", 1e6: "MB", 1e3: "KB", 1: "B"}
