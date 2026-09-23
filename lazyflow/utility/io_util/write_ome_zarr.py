@@ -22,7 +22,7 @@
 import logging
 from functools import partial
 from pathlib import Path
-from typing import List, Dict, Optional, Union, Mapping
+from typing import List, Dict, Optional, Union
 
 import clearscale
 import numpy
@@ -46,6 +46,10 @@ logger = logging.getLogger(__name__)
 OME_ZARR_V_0_4_KWARGS = dict(dimension_separator="/")
 OME_ZARR_AXES: List[Axiskey] = ["t", "c", "z", "y", "x"]
 SINGE_SCALE_DEFAULT_KEY = "s0"
+ILASTIK_SIGNATURE = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 3}
+"""Exporter versions:
+2: after adding the `multi-scale OME-Zarr` format
+3: after extracting clearscale"""
 
 
 def match_target_scales_to_input_excluding_upscales(
@@ -99,7 +103,7 @@ def _get_chunk_shape(tagged_image_shape: clearscale.Shape, dtype) -> clearscale.
         dtype = dtype.type
     dtype_bytes = dtype().nbytes
     tagged_maxshape = tagged_image_shape.with_ones("tc")
-    chunk_shape: ShapeTuple = determineBlockShape(tagged_maxshape.to_list(), target_max_size / dtype_bytes)
+    chunk_shape: ShapeTuple = determineBlockShape(tagged_maxshape.values_list(), target_max_size / dtype_bytes)
     return clearscale.Shape(zip(tagged_maxshape.keys(), chunk_shape))
 
 
@@ -114,7 +118,7 @@ def _create_empty_zarray(
     assert list(chunk_shape.keys()) == list(scale_shape.keys()), "chunk and image shape must have same axes"
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     zarray = zarr.creation.zeros(
-        scale_shape.to_tuple(), store=store, path=scale_key, chunks=chunk_shape.to_tuple(), dtype=export_dtype
+        scale_shape.values_tuple(), store=store, path=scale_key, chunks=chunk_shape.values_tuple(), dtype=export_dtype
     )
     return zarray
 
@@ -141,7 +145,7 @@ def _get_scaling_method_metadata(export_blueprint: clearscale.BlueprintShapes, i
     metadata = {
         "description": "ilastik's lazyflow.operators.opResize.OpResize is a lazy implementation of skimage.transform.resize.",
         "method": "skimage.transform.resize",
-        "version": "0.24.0",
+        "version": "0.26.0",
         "kwargs": {"order": interpolation_order, "anti_aliasing": True, "preserve_range": True},
     }
     return metadata
@@ -157,10 +161,6 @@ def _write_ome_zarr_and_ilastik_metadata(
     input_scale_key: Optional[str],
     ilastik_meta: Dict,
 ):
-    # Exporter versions:
-    # 2: after adding the `multi-scale OME-Zarr` format
-    # 3: after extracting clearscale
-    ilastik_signature = {"name": "ilastik", "version": ilastik_version, "ome_zarr_exporter_version": 3}
     export_pixel_size = clearscale.PixelSize.from_vigra(ilastik_meta["axistags"])
     axes = tuple(export_pixel_size.keys())
     if ilastik_meta["axis_units"]:
@@ -197,7 +197,7 @@ def _write_ome_zarr_and_ilastik_metadata(
     store = FSStore(abs_export_path, mode="w", **OME_ZARR_V_0_4_KWARGS)
     root = zarr.group(store, overwrite=False)
     root.attrs.update(ome_attrs)
-    root.attrs["_creator"] = ilastik_signature
+    root.attrs["_creator"] = ILASTIK_SIGNATURE
     for path in export_blueprint.keys():
         za = zarr.Array(store, path=path)
         _write_to_dataset_attrs(ilastik_meta, za)
@@ -215,7 +215,7 @@ def write_ome_zarr(
         raise ValueError(
             f'Internal paths are not supported by OME-Zarr export. Received internal path: "{pc.internalPath}"'
         )
-    abs_export_path = str(pc.externalPath)
+    abs_export_path = pc.externalPath
     if Path(abs_export_path).exists():
         raise FileExistsError(
             "Aborting because export path already exists. Please delete it manually if you intended to overwrite it. "
@@ -264,7 +264,7 @@ def write_ome_zarr(
                 op_scale = OpResize(
                     parent=image_source_slot.operator,
                     RawImage=reordered_source,
-                    TargetShape=target_shape.to_tuple(),
+                    TargetShape=target_shape.values_tuple(),
                     InterpolationOrder=interpolation_order,
                 )
                 requester = BigRequestStreamer(op_scale.ResizedImage, roiFromShape(op_scale.ResizedImage.meta.shape))
@@ -285,16 +285,16 @@ def write_ome_zarr(
             op_scale = OpResize(
                 parent=image_source_slot.operator,
                 RawImage=prev_slot,
-                TargetShape=target_shape.to_tuple(),
+                TargetShape=target_shape.values_tuple(),
                 InterpolationOrder=interpolation_order,
             )
             ops_to_clean.append(op_scale)
             op_cache = OpBlockedArrayCache(parent=image_source_slot.operator)
             ops_to_clean.append(op_cache)
             op_cache.Input.connect(op_scale.ResizedImage)
-            op_cache.BlockShape.setValue(chunk_shape.to_tuple())
+            op_cache.BlockShape.setValue(chunk_shape.values_tuple())
             requester = BigRequestStreamer(
-                op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape.to_tuple()
+                op_cache.Output, roiFromShape(op_cache.Output.meta.shape), blockshape=chunk_shape.values_tuple()
             )
             zarray = _create_empty_zarray(abs_export_path, downscale_key, target_shape, chunk_shape, export_dtype)
             requester.resultSignal.subscribe(partial(_write_block, zarray))

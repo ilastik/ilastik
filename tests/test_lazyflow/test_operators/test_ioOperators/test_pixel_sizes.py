@@ -710,6 +710,8 @@ def test_read_ome_zarr_v0_4(graph):
     # Resolution 0 for channel seems like something that might happen in the wild
     pyramid_scale = {"t": 0.1, "c": 0, "z": 1, "y": 1, "x": 1}
     dataset_scale = {"t": 1.0, "c": 0, "z": 2.0, "y": 0.3, "x": 4.0}
+    # c normalized to 1 internally; t and zyx scales merged
+    expected_axistag_resolution = {"t": 0.1, "c": 1, "z": 2.0, "y": 0.3, "x": 4.0}
     units = {"t": "sec", "c": "", "z": "mm", "y": "beep", "x": "metres"}
     ome_spec_v0_4 = {
         "multiscales": [
@@ -747,8 +749,7 @@ def test_read_ome_zarr_v0_4(graph):
     assert reader.Output.meta.axis_units == units
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
-        expected_resolution = pyramid_scale[tag.key] * dataset_scale[tag.key]
-        assert tag.resolution == expected_resolution
+        assert tag.resolution == expected_axistag_resolution[tag.key]
 
 
 def test_read_ome_zarr_v0_4_no_units(graph):
@@ -770,9 +771,10 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     }
     array_mock = mock.Mock()
     array_mock.shape = (3, 2, 11, 10, 9)
-    # 1.0 is the default scale in OME-Zarr. It will be mapped to the vigra default resolution 0.0
-    expected_resolution = dataset_scale.copy()
-    expected_resolution["t"] = 0
+    expected_axistag_resolution = dataset_scale.copy()
+    # scale[c]=0 is normalised to pixel size 1.0: 0 is nonsense (a genuine 0-scale would collapse the axis), strictly
+    # speaking even invalid according to spec ("MUST [default] to 1.0 if there is no downsampling along the axis.")
+    expected_axistag_resolution["c"] = 1.0
 
     reader = OpOMEZarrMultiscaleReader(graph=graph)
     with patch_ome_zarr(ome_spec_v0_4, "file:///noop", array_mock):
@@ -784,7 +786,7 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     assert reader.Output.meta.axis_units == {a: "" for a in dataset_scale}
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
-        assert tag.resolution == expected_resolution[tag.key]
+        assert tag.resolution == expected_axistag_resolution[tag.key]
 
 
 def test_write_ome_zarr_single_scale(graph, tmp_path):
@@ -876,7 +878,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
 
 def test_read_precomputed(graph):
     resolution = [801, 802, 70]
-    tagged_resolution = {"c": 0, "z": 70, "y": 802, "x": 801}
+    expected_resolution = {"c": 1, "z": 70, "y": 802, "x": 801}
     precomputed_info = {
         "@type": "neuroglancer_multiscale_volume",
         "type": "image",
@@ -904,4 +906,4 @@ def test_read_precomputed(graph):
     assert reader.Output.meta.axis_units == {"c": "", "z": "nm", "y": "nm", "x": "nm"}
     assert reader.Output.meta.getAxisKeys() == ["c", "z", "y", "x"]
     for tag in reader.Output.meta.axistags:
-        assert tag.resolution == tagged_resolution[tag.key]
+        assert tag.resolution == expected_resolution[tag.key]

@@ -631,7 +631,7 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         for scale_key, scale in self.scales.items():
             if eq_shapes(scale.shape, target_shape):
                 self.working_scale = scale_key
-                self.laneShape = scale.shape.to_tuple()
+                self.laneShape = scale.shape.values_tuple()
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
