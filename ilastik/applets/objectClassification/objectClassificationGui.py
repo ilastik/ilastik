@@ -157,6 +157,9 @@ class ObjectClassificationGui(LabelingGui):
     def secondaryControlsWidget(self) -> ObjectLabelExplorerWidget:
         return self._show_label_explorer()
 
+    def viewerControlWidget(self):
+        return self._viewerControlUi
+
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -232,6 +235,8 @@ class ObjectClassificationGui(LabelingGui):
 
         # Always force at least two labels because it makes no sense to have less here
         self.forceAtLeastTwoLabels(True)
+
+        self._initShortcuts()
 
         # select all the features in the beginning
         cfn = None
@@ -393,12 +398,49 @@ class ObjectClassificationGui(LabelingGui):
             self.labelMode = False
             # And hide all segmentation layers
             for layer in self.layerstack:
-                if "Segmentation" in layer.name:
+                if "Binary image" in layer.name:
                     layer.visible = False
 
     @Slot()
     def handleShowPredictionsClicked(self):
-        self.showPredictions = self.labelingDrawerUi.checkShowPredictions.isChecked()
+        checked = self._viewerControlUi.checkShowPredictions.isChecked()
+        for layer in self.layerstack:
+            if "Prediction" in layer.name:
+                layer.visible = checked
+
+    @Slot()
+    def handleShowBinaryImageClicked(self):
+        checked = self._viewerControlUi.checkShowBinaryImage.isChecked()
+        for layer in self.layerstack:
+            if "Binary image" in layer.name:
+                layer.visible = checked
+
+    @Slot()
+    def updateShowPredictionCheckbox(self):
+        predictLayerCount = 0
+        visibleCount = 0
+        for layer in self.layerstack:
+            if "Prediction" in layer.name:
+                predictLayerCount += 1
+                if layer.visible:
+                    visibleCount += 1
+
+        if visibleCount == 0:
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.Unchecked)
+        elif predictLayerCount == visibleCount:
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.Checked)
+        else:
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
+
+    @Slot()
+    def updateShowBinaryImageCheckbox(self):
+        visibleCount = 0
+        for layer in self.layerstack:
+            if "Binary image" in layer.name:
+                if layer.visible:
+                    visibleCount += 1
+
+        self._viewerControlUi.checkShowBinaryImage.setChecked(visibleCount > 0)
 
     @Slot()
     def handleSubsetFeaturesClicked(self):
@@ -657,6 +699,56 @@ class ObjectClassificationGui(LabelingGui):
 
             return labellayer, labelsrc
 
+    def initViewerControlUi(self):
+        localDir = os.path.split(__file__)[0]
+        self._viewerControlUi = uic.loadUi(os.path.join(localDir, "viewerControls.ui"))
+
+        # Connect checkboxes
+        def nextCheckState(checkbox):
+            checkbox.setChecked(not checkbox.isChecked())
+
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowPredictions
+        )
+        self._viewerControlUi.checkShowBinaryImage.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowBinaryImage
+        )
+
+        self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
+        self._viewerControlUi.checkShowBinaryImage.clicked.connect(self.handleShowBinaryImageClicked)
+
+        # The editor's layerstack is in charge of which layer movement buttons are enabled
+        model = self.editor.layerStack
+        self._viewerControlUi.viewerControls.setupConnections(model)
+
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
+        shortcutGroupName = "Predictions"
+        if hasattr(self, "_viewerControlUi") and hasattr(self._viewerControlUi, "checkShowPredictions"):
+            mgr.register(
+                "p",
+                ActionInfo(
+                    shortcutGroupName,
+                    "Toggle Prediction",
+                    "Toggle Prediction Layer Visibility",
+                    self._viewerControlUi.checkShowPredictions.click,
+                    self._viewerControlUi.checkShowPredictions,
+                    self._viewerControlUi.checkShowPredictions,
+                ),
+            )
+        mgr.register(
+            "s",
+            ActionInfo(
+                shortcutGroupName,
+                "Toggle Binary Image",
+                "Toggle Binary Image Layer Visibility",
+                self._viewerControlUi.checkShowBinaryImage.click,
+                self._viewerControlUi.checkShowBinaryImage,
+                self._viewerControlUi.checkShowBinaryImage,
+            ),
+        )
+
     def setupLayers(self):
         # Base class provides the label layer and the raw layer
         layers = super(ObjectClassificationGui, self).setupLayers()
@@ -675,6 +767,7 @@ class ObjectClassificationGui(LabelingGui):
                 # probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
                 # False, because it's much faster to draw predictions without these layers below
                 probLayer.visible = False
+                probLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 probLayer.setToolTip("Probability that the object belongs to class {}".format(channel + 1))
 
                 def setLayerColor(c, predictLayer_=probLayer, ch=channel, initializing=False):
@@ -706,6 +799,7 @@ class ObjectClassificationGui(LabelingGui):
             predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
             predictLayer.opacity = 0.5
+            predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
             predictLayer.setToolTip("Classification results, assigning a label to each object")
 
             # This weakref stuff is a little more fancy than strictly necessary.
@@ -778,7 +872,8 @@ class ObjectClassificationGui(LabelingGui):
             binaryimagesrc = createDataSource(segmentedSlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
-            binLayer.visible = True
+            binLayer.visible = True  # matches the checkbox's initial checked state in viewerControls.ui
+            binLayer.visibleChanged.connect(self.updateShowBinaryImageCheckbox)
             binLayer.opacity = 1.0
             binLayer.setToolTip("Segmented objects, binary mask")
             layers.append(binLayer)
