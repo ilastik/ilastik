@@ -58,6 +58,7 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ilastik.utility.gui.qtcompat import ensure_bool
 from tiktorch.configkeys import NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX, TRAINING
 from tiktorch.types import ModelState
 from volumina.api import AlphaModulatedLayer, LazyflowSource
@@ -833,7 +834,7 @@ class NNClassGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self.handleShowPredictionsClicked()
 
-        self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
+        self._viewerControlUi.checkShowPredictions.setEnabled(ensure_bool(enabled))
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
