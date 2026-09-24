@@ -86,7 +86,7 @@ jobs:
           matrix.os == 'ubuntu-latest' &&
           matrix.ilastik_variant == 'ilastik-gpu'
         with:
-          tool-cache: false
+          preinstalled-runtimes: false
           android: true
           dotnet: true
           haskell: true
