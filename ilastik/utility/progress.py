@@ -74,6 +74,7 @@ class CommandLineProgressVisitor(DefaultProgressVisitor):
             self._state = self._stop
 
         pos = float(pos)
+        pos = min(pos, self._stop)
         try:
             sys.stdout.write("\r[%-20s] %d%%" % ("=" * int(20 * pos), (100 * pos)))
 
