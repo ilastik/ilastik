@@ -70,6 +70,7 @@ class TrackProgressDialog(QDialog):
 
     @threadRouted
     def __onCurrentStepProgressChanged(self, progress):
+        progress = min(progress, 1.0)
         timesHundred = round(1000.0 * progress)
         timesTen = round(100.0 * progress)
         if (not self.currentStepProgress.value() == timesTen) and (timesHundred - 10 * timesTen) == 0:
