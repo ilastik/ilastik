@@ -54,6 +54,7 @@ class AwsCredentialsDialog(QDialog):
 
         self._fields = []
 
+        self.creds_path = _get_creds_path()
         self.setup_ui()
         self.load_existing_credentials()
         self.connect_validation()
@@ -63,16 +64,6 @@ class AwsCredentialsDialog(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-
-        if _get_creds_path().exists():
-            warning_label = QLabel(
-                "<p>Warning: This modifies your user-wide AWS credentials file at <br>"
-                f"<b>{_get_creds_path()}</b>"
-                "</p><p>If something goes wrong, look for .bak files in the same folder.</p>"
-            )
-            warning_label.setWordWrap(True)
-            layout.addWidget(warning_label)
-
         form = QFormLayout()
 
         profile_label = QLabel("Profile")
@@ -93,6 +84,17 @@ class AwsCredentialsDialog(QDialog):
         form.addRow(secret_key_label, secret_layout)
 
         layout.addLayout(form)
+
+        if self.creds_path.exists():
+            file_label = QLabel(
+                "<p>Warning: Clicking Ok will modify your user-wide AWS credentials file at <br>"
+                f"<b>{self.creds_path}</b>"
+                "</p><p>If something goes wrong, look for backup copies (.bak) in the same folder.</p>"
+            )
+        else:
+            file_label = QLabel(f"<p>Clicking Ok will create the credentials file at <b>{self.creds_path}</b></p>")
+        layout.addWidget(file_label)
+        layout.addWidget(QLabel("<p>Note: You must <b>restart ilastik</b> for changes to take effect.</p>"))
 
         self._fields = [self.profile_input, self.access_key_input, self.secret_key_input]
 
@@ -124,13 +126,12 @@ class AwsCredentialsDialog(QDialog):
         self.ok_button.setEnabled(all_valid)
 
     def load_existing_credentials(self):
-        creds_path = _get_creds_path()
-        if not creds_path.exists():
+        if not self.creds_path.exists():
             self.profile_input.setText("default")
             return
 
         config = configparser.ConfigParser()
-        config.read(creds_path)
+        config.read(self.creds_path)
 
         if "default" in config:
             profile = "default"
@@ -146,7 +147,7 @@ class AwsCredentialsDialog(QDialog):
         access_key = self.access_key_input.text().strip()
         secret_key = self.secret_key_input.text().strip()
 
-        creds_path = _get_creds_path()
+        creds_path = self.creds_path
         backup_path = creds_path.parent / "credentials.bak"
         i = 1
         while backup_path.exists():
