@@ -77,6 +77,12 @@ def parallel_watershed(
 
     labels = np.zeros_like(data, dtype=np.uint32)
 
+    # Minimum outer block size to prevent segfaults from fastfilters.gaussianSmoothing
+    # when the block is too small relative to the sigma. The Gaussian kernel extends
+    # ~3*sigma on each side, so the block must be at least 6*sigma+1 in each dimension.
+    max_sigma = max(sigma_seeds, sigma_weights)
+    min_outer_size = max(int(6 * max_sigma + 1), max(halo) + 1)
+
     # watershed for a single block
     def ws_block(block_index):
         nonlocal labels
@@ -86,8 +92,30 @@ def parallel_watershed(
         # block without halo in loocal coordinates
         block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
         inner_slicing = roiToSlice(block.innerBlock.begin, block.innerBlock.end)
-        outer_slicing = roiToSlice(block.outerBlock.begin, block.outerBlock.end)
         inner_local_slicing = roiToSlice(block.innerBlockLocal.begin, block.innerBlockLocal.end)
+
+        # Extend the outer block if it is too small to avoid segfaults from
+        # Gaussian smoothing with large sigma on tiny blocks at data boundaries.
+        # When an outer block is clamped at a data boundary, we extend it on the
+        # opposite side (still clamped to valid data range) to ensure it reaches
+        # a minimum size.
+        outer_begin = list(block.outerBlock.begin)
+        outer_end = list(block.outerBlock.end)
+        for dim in range(ndim):
+            outer_size = outer_end[dim] - outer_begin[dim]
+            if outer_size < min_outer_size:
+                deficit = min_outer_size - outer_size
+                # Extend towards the start of the axis
+                extend_start = min(deficit, outer_begin[dim])
+                outer_begin[dim] -= extend_start
+                # Extend towards the end of the axis with any remaining deficit
+                extend_end = min(deficit - extend_start, shape[dim] - outer_end[dim])
+                outer_end[dim] += extend_end
+
+        outer_slicing = roiToSlice(np.array(outer_begin), np.array(outer_end))
+        # Adjust inner_local_slicing to account for the extension
+        inner_local_begin = np.array(block.innerBlockLocal.begin) + (np.array(block.outerBlock.begin) - np.array(outer_begin))
+        inner_local_slicing = roiToSlice(inner_local_begin, inner_local_begin + np.array(block.innerBlockLocal.end) - np.array(block.innerBlockLocal.begin))
 
         with Timer() as btimer:
             # write watershed result to the label array
