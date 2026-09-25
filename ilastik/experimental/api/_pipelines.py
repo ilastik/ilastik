@@ -94,7 +94,7 @@ class PixelClassificationPipeline:
 
         self._feature_sel_op = OpFeatureSelection(graph=graph)
         self._feature_sel_op.InputImage.connect(self._reorder_op.Output)
-        self._feature_sel_op.FeatureIds.setValue(project.feature_matrix.names)
+        self._feature_sel_op.FeatureIds.setValue(project.feature_matrix.feature_ids)
         self._feature_sel_op.Scales.setValue(project.feature_matrix.scales)
         self._feature_sel_op.SelectionMatrix.setValue(project.feature_matrix.selections)
         self._feature_sel_op.ComputeIn2d.setValue(project.feature_matrix.compute_in_2d.tolist())
@@ -183,7 +183,7 @@ class AutocontextPipeline:
 
         self._feature_sel_op_stage1 = OpFeatureSelection(graph=graph)
         self._feature_sel_op_stage1.InputImage.connect(self._reorder_op.Output)
-        self._feature_sel_op_stage1.FeatureIds.setValue(project.feature_matrix_stage1.names)
+        self._feature_sel_op_stage1.FeatureIds.setValue(project.feature_matrix_stage1.feature_ids)
         self._feature_sel_op_stage1.Scales.setValue(project.feature_matrix_stage1.scales)
         self._feature_sel_op_stage1.SelectionMatrix.setValue(project.feature_matrix_stage1.selections)
         self._feature_sel_op_stage1.ComputeIn2d.setValue(project.feature_matrix_stage1.compute_in_2d.tolist())
@@ -207,7 +207,7 @@ class AutocontextPipeline:
 
         self._feature_sel_op_stage2 = OpFeatureSelection(graph=graph)
         self._feature_sel_op_stage2.InputImage.connect(self._opStacker.Output)
-        self._feature_sel_op_stage2.FeatureIds.setValue(project.feature_matrix_stage2.names)
+        self._feature_sel_op_stage2.FeatureIds.setValue(project.feature_matrix_stage2.feature_ids)
         self._feature_sel_op_stage2.Scales.setValue(project.feature_matrix_stage2.scales)
         self._feature_sel_op_stage2.SelectionMatrix.setValue(project.feature_matrix_stage2.selections)
         self._feature_sel_op_stage2.ComputeIn2d.setValue(project.feature_matrix_stage2.compute_in_2d.tolist())

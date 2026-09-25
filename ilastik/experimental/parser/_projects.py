@@ -20,20 +20,20 @@
 ###############################################################################
 # pyright: strict
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from . import types
 
 
-class PixelClassificationProject(types.ProjectBase):
-    input_data: types.InputData = Field(alias="Input Data")
-    feature_matrix: types.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier: types.Classifier = Field(alias="PixelClassification")
+class PixelClassificationProject(types.applets.ProjectBase):
+    input_data: types.applets.InputData = Field(alias="Input Data")
+    feature_matrix: types.applets.FeatureSelection = Field(alias="FeatureSelections")
+    classifier: types.applets.PixelClassification = Field(alias="PixelClassification")
 
 
-class AutocontextProject(types.ProjectBase):
-    input_data: types.InputData = Field(alias="Input Data")
-    feature_matrix_stage1: types.FeatureMatrix = Field(alias="FeatureSelections")
-    classifier_stage1: types.Classifier = Field(alias="PixelClassification")
-    feature_matrix_stage2: types.FeatureMatrix = Field(alias="FeatureSelections01")
-    classifier_stage2: types.Classifier = Field(alias="PixelClassification01")
+class AutocontextProject(types.applets.ProjectBase):
+    input_data: types.applets.InputData = Field(alias="Input Data")
+    feature_matrix_stage1: types.applets.FeatureSelection = Field(alias="FeatureSelections")
+    classifier_stage1: types.applets.PixelClassification = Field(alias="PixelClassification")
+    feature_matrix_stage2: types.applets.FeatureSelection = Field(alias="FeatureSelections01")
+    classifier_stage2: types.applets.PixelClassification = Field(alias="PixelClassification01")
