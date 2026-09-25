@@ -30,3 +30,24 @@ def test_01_02_compat(
     serializer.deserializeFromHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
 
     assert op.BlockwiseWatershed.value == expected_blockwise_value
+
+@pytest.mark.parametrize(
+    "serializer_version,serialized_value,expected_invert_value",
+    [("0.1", None, False), ("0.2", True, True), ("0.2", False, False)],
+)
+def test_invert_pixel_probabilities_compat(
+    graph, empty_in_memory_project_file, serializer_version, serialized_value, expected_invert_value
+):
+    """Test reading of InvertPixelProbabilities in multicut projects"""
+    serializer_group = "wsdt"
+
+    g = empty_in_memory_project_file.create_group(serializer_group)
+    if serialized_value is not None:
+        g.create_dataset("InvertPixelProbabilities", data=serialized_value)
+    g.create_dataset("StorageVersion", data=serializer_version)
+
+    op = OpCachedWsdt(graph=graph)
+    serializer = WsdtSerializer(op, serializer_group)
+    serializer.deserializeFromHdf5(empty_in_memory_project_file, empty_in_memory_project_file.name)
+
+    assert op.InvertPixelProbabilities.value == expected_invert_value
