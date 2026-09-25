@@ -51,6 +51,7 @@ class WsdtApplet(StandardApplet):
             "PixelPitch",
             "ApplyNonmaxSuppression",
             "BlockwiseWatershed",
+            "InvertPixelProbabilities",
         ]
 
     @property
