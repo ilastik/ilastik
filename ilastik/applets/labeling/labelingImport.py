@@ -24,6 +24,7 @@ from builtins import range
 import collections
 import os
 from typing import TYPE_CHECKING
+from ilastik.utility.gui.qtcompat import ensure_bool, ensure_int
 import numpy
 import vigra
 
@@ -462,10 +463,10 @@ class LabelImportOptionsDlg(QDialog):
 
             insertBox.setValue(0)
             insertBox.setMinimum(0)
-            insertBox.setMaximum(extent)
+            insertBox.setMaximum(ensure_int(extent))
             insertBox.setEnabled(tagged_insert[axis_key] is not None)
             if insertBox.isEnabled():
-                insertBox.setValue(default_insert)
+                insertBox.setValue(ensure_int(default_insert))
 
             # TODO: maxBox shouldn't be in tab list (but it still is)
             maxBox.setTextInteractionFlags(Qt.NoTextInteraction)
@@ -504,12 +505,12 @@ class LabelImportOptionsDlg(QDialog):
             mapToBox = QSpinBox(self)
             pxCountBox = QLabel(str(px_cnt), self)
 
-            enabledBox.setChecked(label_to > 0)
+            enabledBox.setChecked(ensure_bool(label_to > 0))
 
             mapToBox.setMinimum(1 if label_to else 0)
-            mapToBox.setMaximum(max_labels if label_to else 0)
-            mapToBox.setValue(label_to)
-            mapToBox.setEnabled(label_to > 0)
+            mapToBox.setMaximum(ensure_int(max_labels) if label_to else 0)
+            mapToBox.setValue(ensure_int(label_to))
+            mapToBox.setEnabled(ensure_bool(label_to > 0))
 
             enabledBox.stateChanged.connect(self._updateMappingEnabled)
             mapToBox.valueChanged.connect(self._updateMapping)
@@ -569,9 +570,9 @@ class LabelImportOptionsDlg(QDialog):
             self.labelMapping[k] = label_to
 
             mapToBox.setMinimum(1 if label_to else 0)
-            mapToBox.setMaximum(max_labels if label_to else 0)
-            mapToBox.setValue(label_to)
-            mapToBox.setEnabled(label_to > 0)
+            mapToBox.setMaximum(ensure_int(max_labels) if label_to else 0)
+            mapToBox.setValue(ensure_int(label_to))
+            mapToBox.setEnabled(ensure_bool(label_to > 0))
 
         enabledBoxes, _ = list(zip(*list(self._insert_mapping_boxes.values())))
         enableOk = any(map(QCheckBox.isChecked, enabledBoxes))
