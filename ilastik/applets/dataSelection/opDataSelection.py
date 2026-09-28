@@ -31,6 +31,7 @@ from numbers import Number
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional, Union, Callable, Set
 
+import clearscale
 import h5py
 import numpy
 import vigra
@@ -52,7 +53,7 @@ from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.helpers import get_default_axisordering, eq_shapes
-from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY, Multiscale
+from lazyflow.utility.io_util.multiscaleStore import DEFAULT_SCALE_KEY
 from lazyflow.utility.pathHelpers import splitPath, globH5N5, globNpz, PathComponents, uri_to_Path
 
 
@@ -104,7 +105,7 @@ class DatasetInfo(ABC):
         laneDtype: type,
         default_tags: AxisTags,  # inferred from dataset or another data lane
         axistags: AxisTags = None,  # given through datasetInfoEditorWidget or cmdline
-        scales: Multiscale = None,
+        scales: clearscale.Multiscale = None,
         allowLabels: bool = True,
         subvolume_roi: Tuple = None,
         display_mode: str = "default",
@@ -618,19 +619,19 @@ class MultiscaleUrlDatasetInfo(DatasetInfo):
         return super().from_h5_group(group, params)
 
     def get_scale_matching_shape(self, target_shape: Dict[str, int]) -> str:
-        for scale, shape in self.scales.items():
-            if eq_shapes(shape, target_shape):
-                return scale
+        for scale_key, scale in self.scales.items():
+            if eq_shapes(scale.shape, target_shape):
+                return scale_key
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
     def has_scale_matching_shape(self, target_shape: Dict[str, int]) -> bool:
-        return any(eq_shapes(shape, target_shape) for shape in self.scales.values())
+        return any(eq_shapes(scale.shape, target_shape) for scale in self.scales.values())
 
     def switch_to_scale_with_shape(self, target_shape: Dict[str, int]):
-        for scale, shape in self.scales.items():
-            if eq_shapes(shape, target_shape):
-                self.working_scale = scale
-                self.laneShape = tuple(self.scales[scale].values())
+        for scale_key, scale in self.scales.items():
+            if eq_shapes(scale.shape, target_shape):
+                self.working_scale = scale_key
+                self.laneShape = scale.shape.to_tuple()
                 return
         raise DatasetConstraintError("DataSelection", f"No scale matches shape {target_shape}")
 
