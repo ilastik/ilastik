@@ -31,6 +31,7 @@ def test_01_02_compat(
 
     assert op.BlockwiseWatershed.value == expected_blockwise_value
 
+
 @pytest.mark.parametrize(
     "serializer_version,serialized_value,expected_invert_value",
     [("0.1", None, False), ("0.2", True, True), ("0.2", False, False)],
