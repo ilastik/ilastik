@@ -234,6 +234,7 @@ class WsdtGui(LayerViewerGui):
             self.min_size_box.setValue(ensure_int(op.MinSize.value))
             self.sigma_box.setValue(ensure_float(op.Sigma.value))
             self.alpha_box.setValue(ensure_float(op.Alpha.value))
+            self.invert_probabilities_box.setChecked(ensure_bool(op.InvertPixelProbabilities.value))
             self.enable_debug_box.setChecked(ensure_bool(op.EnableDebugOutputs.value))
             self.update_ws_button.setEnabled(op.Superpixels.ready())
 
