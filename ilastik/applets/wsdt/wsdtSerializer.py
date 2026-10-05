@@ -71,6 +71,7 @@ class WsdtSerializer(AppletSerializer):
             SerialSlot(operator.Alpha),
             SerialSlot(operator.PixelPitch),
             SerialDefaultSlot(operator.BlockwiseWatershed, default=False),
+            SerialDefaultSlot(operator.InvertPixelProbabilities, default=False),
             SerialBlockSlot(
                 operator.Superpixels,
                 operator.SuperpixelCacheInput,
