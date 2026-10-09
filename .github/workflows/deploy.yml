@@ -51,19 +51,3 @@ jobs:
           conda build -c conda-forge -c ilastik-forge \
           --user ilastik-forge \
           conda-recipe
-
-  trigger-release:
-    needs: [package]
-    runs-on: ubuntu-latest
-    steps:
-      - name: trigger
-        run: |
-          echo "Triggering release pipeline!"
-          curl \
-            --silent \
-            -X POST \
-            -F token=${{ secrets.GL_TOKEN }} \
-            -F "ref=main" \
-            -F "variables[ILASTIK_VERSION]=${GITHUB_REF##*/}" \
-            --output /dev/null \
-            ${{ secrets.GL_URL }}
