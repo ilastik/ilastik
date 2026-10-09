@@ -22,6 +22,64 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _min_outer_size(sigma_seeds: float, sigma_weights: float, halo: Sequence[int]) -> int:
+    """Minimum outer block size to prevent segfaults from fastfilters.gaussianSmoothing.
+
+    The Gaussian kernel extends ~3*sigma on each side, so the block must be
+    at least 6*sigma+1 in each dimension. Also at least halo+1 so halo regions fit.
+    """
+    max_sigma = max(sigma_seeds, sigma_weights)
+    return max(int(6 * max_sigma + 1), max(halo) + 1)
+
+
+def _adjust_block_slicings(
+    block,
+    data_shape: Sequence[int],
+    min_outer_size: int,
+):
+    """Compute inner, outer, and inner-local slicings for a block, extending
+    the outer block to ``min_outer_size`` when it is clamped at a data boundary.
+
+    When an outer block is too small (clamped at a data boundary), it is
+    extended on the opposite side (still clamped to valid data range) so
+    Gaussian smoothing always has enough context.
+
+    Args:
+        block: object with ``innerBlock``, ``outerBlock``, ``innerBlockLocal``,
+            each exposing ``begin`` and ``end`` sequences.
+        data_shape: shape of the full dataset.
+        min_outer_size: minimum required outer block size per dimension.
+
+    Returns:
+        (inner_slicing, outer_slicing, inner_local_slicing)
+    """
+    ndim = len(data_shape)
+
+    outer_begin = list(block.outerBlock.begin)
+    outer_end = list(block.outerBlock.end)
+    for dim in range(ndim):
+        outer_size = outer_end[dim] - outer_begin[dim]
+        if outer_size < min_outer_size:
+            deficit = min_outer_size - outer_size
+            extend_start = min(deficit, outer_begin[dim])
+            outer_begin[dim] -= extend_start
+            extend_end = min(deficit - extend_start, data_shape[dim] - outer_end[dim])
+            outer_end[dim] += extend_end
+
+    inner_slicing = roiToSlice(block.innerBlock.begin, block.innerBlock.end)
+    outer_slicing = roiToSlice(np.array(outer_begin), np.array(outer_end))
+
+    inner_local_begin = np.array(block.innerBlockLocal.begin) + (
+        np.array(block.outerBlock.begin) - np.array(outer_begin)
+    )
+    inner_local_end = inner_local_begin + np.array(block.innerBlockLocal.end) - np.array(
+        block.innerBlockLocal.begin
+    )
+    inner_local_slicing = roiToSlice(inner_local_begin, inner_local_end)
+
+    return inner_slicing, outer_slicing, inner_local_slicing
+
+
 def parallel_watershed(
     data: np.ndarray,
     threshold: float,
@@ -72,6 +130,16 @@ def parallel_watershed(
 
     logger.info(f"blockwise watershed with {max_workers} threads.")
 
+    min_outer_size = _min_outer_size(sigma_seeds, sigma_weights, halo)
+
+    too_small = [d for d in range(ndim) if shape[d] < min_outer_size]
+    if too_small:
+        raise ValueError(
+            f"Data shape {shape} is too small for sigma={max(sigma_seeds, sigma_weights)} "
+            f"in dimensions {too_small}: each dimension must be at least "
+            f"{min_outer_size} voxels. Please reduce the sigma value."
+        )
+
     blocking = get_blocking(data, block_shape, roi=None, n_threads=max_workers)
     n_blocks = blocking.numberOfBlocks
 
@@ -81,13 +149,10 @@ def parallel_watershed(
     def ws_block(block_index):
         nonlocal labels
 
-        # get the block with halo and the slicings corresponding to
-        # the block with halo, the block without halo and the
-        # block without halo in loocal coordinates
         block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
-        inner_slicing = roiToSlice(block.innerBlock.begin, block.innerBlock.end)
-        outer_slicing = roiToSlice(block.outerBlock.begin, block.outerBlock.end)
-        inner_local_slicing = roiToSlice(block.innerBlockLocal.begin, block.innerBlockLocal.end)
+        inner_slicing, outer_slicing, inner_local_slicing = _adjust_block_slicings(
+            block, shape, min_outer_size
+        )
 
         with Timer() as btimer:
             # write watershed result to the label array
