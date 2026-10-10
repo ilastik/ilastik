@@ -81,7 +81,7 @@ class BioImageDownloader(QThread):
 
             def _callback(progress_signal: Signal) -> Callable[[int, int], None]:
                 def _cb(n: int, total: int, **kwargs):
-                    if total > 0:
+                    if total > 0 and n <= total:
                         progress_signal.emit(int(n / total * 100))
 
                 return _cb
@@ -97,7 +97,7 @@ class BioImageDownloader(QThread):
                     download(
                         v,
                         progressbar=TqdmExt(
-                            total=1,  # hack: it will be set later by HTTPDownloader, but it is needed for a valid tqdm
+                            total=0,  # unknown until HTTP response headers arrive; _cb skips until total > 0
                             callback=_callback(self.progress1),
                             cancellation_token=self._cancellation_token,
                         ),
