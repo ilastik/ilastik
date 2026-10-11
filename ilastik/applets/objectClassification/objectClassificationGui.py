@@ -253,14 +253,7 @@ class ObjectClassificationGui(LabelingGui):
 
         self.op.SelectedFeatures.setValue(already_selected)
 
-        nfeatures = 0
-
-        if already_selected is not None:
-            for plugin_features in already_selected.values():
-                nfeatures += len(plugin_features)
-        self.labelingDrawerUi.featuresSubset.setText(
-            "{} features selected,\nsome may have multiple channels".format(nfeatures)
-        )
+        self._updateFeaturesSubsetLabel()
 
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
@@ -506,12 +499,6 @@ class ObjectClassificationGui(LabelingGui):
                 self.interactiveMode = False
 
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
-            nfeatures = 0
-            for plugin_features in dlg.selectedFeatures.values():
-                nfeatures += len(plugin_features)
-            self.labelingDrawerUi.featuresSubset.setText(
-                "{} features selected,\nsome may have multiple channels".format(nfeatures)
-            )
         mainOperator.ComputedFeatureNames.setDirty(())
 
     @Slot()
@@ -519,6 +506,17 @@ class ObjectClassificationGui(LabelingGui):
         if self._labelAssistDialog is None:
             self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
         self._labelAssistDialog.show()
+
+    def _updateFeaturesSubsetLabel(self):
+        nfeatures = 0
+        if self.op.SelectedFeatures.ready():
+            selected = self.op.SelectedFeatures([]).wait()
+            if selected is not None:
+                for plugin_features in selected.values():
+                    nfeatures += len(plugin_features)
+        self.labelingDrawerUi.featuresSubset.setText(
+            "{} features selected,\nsome may have multiple channels".format(nfeatures)
+        )
 
     @Slot()
     def checkEnableButtons(self):
@@ -553,6 +551,7 @@ class ObjectClassificationGui(LabelingGui):
             self.interactiveMode = False
             self.showPredictions = False
 
+        self._updateFeaturesSubsetLabel()
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.liveUpdateButton.setEnabled(predict_enabled)
