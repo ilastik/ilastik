@@ -499,6 +499,9 @@ class ObjectClassificationGui(LabelingGui):
                 self.interactiveMode = False
 
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
+            # SelectedFeatures is shared by every lane, so checkEnableButtons()
+            # (wired to SelectedFeatures.notifyDirty for every lane) will refresh
+            # each lane's label on its own.
         mainOperator.ComputedFeatureNames.setDirty(())
 
     @Slot()
@@ -508,6 +511,10 @@ class ObjectClassificationGui(LabelingGui):
         self._labelAssistDialog.show()
 
     def _updateFeaturesSubsetLabel(self):
+        """
+        Refresh this lane's "N features selected" label from the current
+        (project-wide) SelectedFeatures slot value.
+        """
         nfeatures = 0
         if self.op.SelectedFeatures.ready():
             selected = self.op.SelectedFeatures([]).wait()
