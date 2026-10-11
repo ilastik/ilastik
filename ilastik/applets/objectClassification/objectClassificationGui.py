@@ -256,17 +256,17 @@ class ObjectClassificationGui(LabelingGui):
         self._updateFeaturesSubsetLabel()
 
         # enable/disable buttons logic
-        self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
-        self.__cleanup_fns.append(partial(op.ObjectFeatures.unregisterDirty, bind(self.checkEnableButtons)))
+        self.op.ObjectFeatures.notifyDirty(bind(self.updateDrawerState))
+        self.__cleanup_fns.append(partial(op.ObjectFeatures.unregisterDirty, bind(self.updateDrawerState)))
 
-        self.op.NumLabels.notifyReady(bind(self.checkEnableButtons))
-        self.__cleanup_fns.append(partial(op.NumLabels.unregisterReady, bind(self.checkEnableButtons)))
+        self.op.NumLabels.notifyReady(bind(self.updateDrawerState))
+        self.__cleanup_fns.append(partial(op.NumLabels.unregisterReady, bind(self.updateDrawerState)))
 
-        self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
-        self.__cleanup_fns.append(partial(op.NumLabels.unregisterDirty, bind(self.checkEnableButtons)))
+        self.op.NumLabels.notifyDirty(bind(self.updateDrawerState))
+        self.__cleanup_fns.append(partial(op.NumLabels.unregisterDirty, bind(self.updateDrawerState)))
 
-        self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
-        self.__cleanup_fns.append(partial(op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons)))
+        self.op.SelectedFeatures.notifyDirty(bind(self.updateDrawerState))
+        self.__cleanup_fns.append(partial(op.SelectedFeatures.unregisterDirty, bind(self.updateDrawerState)))
 
         if not self.op.AllowAddLabel([]).wait()[0]:
             self.labelingDrawerUi.AddLabelButton.hide()
@@ -274,7 +274,7 @@ class ObjectClassificationGui(LabelingGui):
 
         self.badObjectBox = None
 
-        self.checkEnableButtons()
+        self.updateDrawerState()
 
         self._labelAssistDialog = None
         self._label_explorer_widget: Union[None, ObjectLabelExplorerWidget] = None
@@ -499,7 +499,7 @@ class ObjectClassificationGui(LabelingGui):
                 self.interactiveMode = False
 
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
-            # SelectedFeatures is shared by every lane, so checkEnableButtons()
+            # SelectedFeatures is shared by every lane, so updateDrawerState()
             # (wired to SelectedFeatures.notifyDirty for every lane) will refresh
             # each lane's label on its own.
         mainOperator.ComputedFeatureNames.setDirty(())
@@ -526,7 +526,7 @@ class ObjectClassificationGui(LabelingGui):
         )
 
     @Slot()
-    def checkEnableButtons(self):
+    def updateDrawerState(self):
         feats_enabled = True
         predict_enabled = True
         labels_enabled = True
