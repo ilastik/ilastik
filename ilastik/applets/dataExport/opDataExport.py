@@ -51,6 +51,7 @@ class DataExportPathFormatter:
 
         if self._result_type:
             known_keys["result_type"] = self._result_type
+            known_keys["export_source_hyphenated"] = self._result_type.replace(" ", "-")
 
         return format_known_keys(path_template, known_keys)
 
