@@ -245,7 +245,7 @@ class DataSelectionApplet(Applet):
         if isUrl(url):
             return MultiscaleUrlDatasetInfo(url=url, axistags=axistags, project_file=self.project_file)
         else:
-            return RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+            return RelativeFilesystemDatasetInfo.create_or_dispatch(
                 filePath=str(Path(url).absolute()),
                 axistags=axistags,
                 sequence_axis=sequence_axis,
