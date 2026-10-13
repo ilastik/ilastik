@@ -22,10 +22,12 @@
 
 from functools import reduce
 from operator import mul
-from typing import Iterable, Tuple, Type, Union, Dict
+from typing import Iterable, Tuple, Type, Union, Mapping
 import sys
 import numbers
 import numpy
+
+import clearscale
 
 
 def itersubclasses(cls, _seen=None):
@@ -165,10 +167,8 @@ def get_ram_per_element(dtype: Union[Type[object], numpy.dtype]) -> int:
         return sys.getsizeof(None)
 
 
-def eq_shapes(test: Dict[str, int], ref: Dict[str, int]) -> bool:
-    """Check if two tagged shapes are equal. Ignore channel. Additional singleton axes are ok."""
-    common_axes = set(test.keys()) & set(ref.keys())
-    extra_axes = set(test.keys()) ^ set(ref.keys())
-    common_match = all(test[a] == ref[a] for a in common_axes if a != "c")
-    extra_are_singleton = all(test.get(a, 1) == 1 and ref.get(a, 1) == 1 for a in extra_axes if a != "c")
-    return common_match and extra_are_singleton
+def eq_shapes(test: Mapping[str, int], ref: Mapping[str, int]) -> bool:
+    """Check if two tagged shapes are equal. Ignore channel and axis order. Additional singleton axes are ok."""
+    test = clearscale.Shape(test)
+    ref = clearscale.Shape(ref)
+    return dict(test.without_axes("c").without_singletons()) == dict(ref.without_axes("c").without_singletons())
