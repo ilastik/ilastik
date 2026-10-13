@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
+from abc import ABC, abstractmethod
 import warnings
 from typing import Literal, Union
 
@@ -35,7 +36,13 @@ from lazyflow.operators.classifierOperators import OpClassifierPredict
 from lazyflow.operators.generic import OpMultiArrayStacker, OpPixelOperator
 
 
-class PixelClassificationPipeline:
+class Pipeline(ABC):
+    @abstractmethod
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "Pipeline": ...
+
+
+class PixelClassificationPipeline(Pipeline):
     """
     Pipeline for accessing trained Pixel Classification classifiers from Python
 
@@ -139,7 +146,7 @@ class PixelClassificationPipeline:
         return xarray.DataArray(probabilities, dims=tuple(self._predict_op.PMaps.meta.axistags.keys()))
 
 
-class AutocontextPipeline:
+class AutocontextPipeline(Pipeline):
     """
     Pipeline for accessing trained Autocontext classifiers from Python
 
@@ -268,6 +275,44 @@ class AutocontextPipeline:
             raw_data: image with same dimensionality as in the trained project file
         """
         return self._get_probabilities(raw_data, stage=2)
+
+
+class ObjectClassifcationFromSegmentationPipeline(Pipeline):
+
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "ObjectClassifcationFromSegmentationPipeline":
+        """
+        Create an Autocontext Pipeline instance from a trained project.ilp file
+
+        Args:
+            path: Path to the ilp file
+
+        Returns:
+            AutocontextPipeline instance configured with trained classifier
+        """
+        with h5py.File(path, "r") as f:
+            project = parser.AutocontextProject.model_validate(f)
+
+        return cls(project)
+
+
+class ObjectClassifcationFromPredictionPipeline(Pipeline):
+
+    @classmethod
+    def from_ilp_file(cls, path: str) -> "ObjectClassifcationFromPredictionPipeline":
+        """
+        Create an Autocontext Pipeline instance from a trained project.ilp file
+
+        Args:
+            path: Path to the ilp file
+
+        Returns:
+            AutocontextPipeline instance configured with trained classifier
+        """
+        with h5py.File(path, "r") as f:
+            project = parser.AutocontextProject.model_validate(f)
+
+        return cls(project)
 
 
 def ensure_channel_axis(axis_order):
