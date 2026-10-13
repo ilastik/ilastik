@@ -38,7 +38,7 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
 )
 
-from ilastik.experimental.parser.types import ProjectBase
+from ilastik.experimental.parser.types.applets import ProjectBase
 from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)
