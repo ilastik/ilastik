@@ -56,7 +56,8 @@ outputs:
         - pandas 2.*
         - platformdirs
         - psutil
-        - pydantic >2.10,<3
+        # upper pin currently needed with bioimageio, check back with next tiktorch update
+        - pydantic >2.10,<2.14
         - pyopengl
         - pyqt 5.15.*
         # pyqtgraph 0.14.0 results in non-functional 3dvp on win, no mesh display on mac
