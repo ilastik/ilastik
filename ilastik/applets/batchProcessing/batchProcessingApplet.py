@@ -152,12 +152,13 @@ class BatchProcessingApplet(Applet):
         try:
             results = []
             for batch_index, lane_config in enumerate(lane_configs):
-
-                def lerpProgressSignal(a, b, p):
-                    self.progressSignal((100 - p) * a + p * b)
-
                 global_progress_start = batch_index / len(lane_configs)
                 global_progress_end = (batch_index + 1) / len(lane_configs)
+
+                def lerpProgressSignal(a, b, p):
+                    # a, b are fractions [0.0, 1.0]; p is per-file percent [0, 100]
+                    # Map p linearly from a*100 to b*100
+                    self.progressSignal(100 * (a + (b - a) * p / 100))
 
                 result = self.export_dataset(
                     lane_config,
