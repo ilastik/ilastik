@@ -23,6 +23,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
+import h5py
 import numpy
 import pytest
 import vigra
@@ -44,7 +45,9 @@ class TestOpDataExport(object):
     def teardown_class(cls):
         shutil.rmtree(cls._tmpdir)
 
-    def testBasic(self, tmp_h5_single_dataset: Path):
+    @pytest.mark.parametrize("nickname", ["test_nickname", "sample.1", "sample.h5"])
+    @pytest.mark.parametrize("suffix", ["", ".h5", ".tiff"])
+    def testBasic(self, tmp_h5_single_dataset: Path, nickname, suffix):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
         try:
@@ -52,7 +55,7 @@ class TestOpDataExport(object):
             opExport.WorkingDirectory.setValue(self._tmpdir)
 
             rawInfo = FilesystemDatasetInfo(
-                filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname="test_nickname"
+                filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname=nickname
             )
 
             opExport.RawDatasetInfo.setValue(rawInfo)
@@ -73,7 +76,7 @@ class TestOpDataExport(object):
 
             opExport.OutputFormat.setValue("hdf5")
             opExport.OutputFilenameFormat.setValue(
-                "{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}"
+                "{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}" + suffix
             )
             opExport.OutputInternalPath.setValue("volume/data")
 
@@ -100,6 +103,70 @@ class TestOpDataExport(object):
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
+
+    @pytest.mark.parametrize(
+        "template,basename",
+        [
+            ("{nickname:.10s}", "sample.123"),
+            ("{nickname}.{result_type}", "sample.1234567.Probabilities"),
+        ],
+    )
+    def test_filename_templates_after_format_change(self, tmp_h5_single_dataset, tmp_path, template, basename):
+        opExport = OpDataExport(graph=Graph())
+        try:
+            opExport.TransactionSlot.setValue(True)
+            opExport.WorkingDirectory.setValue(str(tmp_path))
+            opExport.RawDatasetInfo.setValue(
+                FilesystemDatasetInfo(
+                    filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname="sample.1234567"
+                )
+            )
+            opExport.SelectionNames.setValue(["Probabilities"])
+            opExport.Inputs.resize(1)
+            opExport.Inputs[0].setValue(vigra.taggedView(numpy.zeros((2, 3), dtype=numpy.uint8), "xy"))
+            opExport.OutputFilenameFormat.setValue(template)
+
+            for output_format, ending in [
+                ("hdf5", ".h5/exported_data"),
+                ("numpy", ".npy"),
+                ("hdf5", ".h5/exported_data"),
+            ]:
+                opExport.OutputFormat.setValue(output_format)
+                assert Path(opExport.ExportPath.value) == tmp_path / (basename + ending)
+        finally:
+            opExport.cleanUp()
+
+    @pytest.mark.parametrize("nicknames", [("sample.1", "sample.2"), ("sample.1.h5", "sample.2.h5")])
+    def test_distinct_dotted_nicknames(self, tmp_h5_single_dataset, tmp_path, nicknames):
+        output_dir = tmp_path / "export.results"
+        output_dir.mkdir()
+        expected = {}
+        opExport = OpDataExport(graph=Graph())
+        try:
+            opExport.TransactionSlot.setValue(True)
+            opExport.WorkingDirectory.setValue(str(output_dir))
+            opExport.SelectionNames.setValue(["Probabilities"])
+            opExport.OutputFormat.setValue("hdf5")
+            opExport.OutputFilenameFormat.setValue("{nickname}")
+            opExport.Inputs.resize(1)
+
+            for value, nickname in enumerate(nicknames):
+                data = numpy.full((2, 3), value, dtype=numpy.uint8)
+                opExport.Inputs[0].setValue(vigra.taggedView(data, "xy"))
+                opExport.RawDatasetInfo.setValue(
+                    FilesystemDatasetInfo(
+                        filePath=str(tmp_h5_single_dataset / "test_group/test_data"), nickname=nickname
+                    )
+                )
+                opExport.run_export()
+                expected[output_dir / (nickname + ".h5")] = data
+        finally:
+            opExport.cleanUp()
+
+        assert sorted(output_dir.iterdir()) == sorted(expected)
+        for path, data in expected.items():
+            with h5py.File(path, "r") as exported:
+                numpy.testing.assert_array_equal(exported["exported_data"][:], data)
 
 
 class TestDataExportPathFormatter:
