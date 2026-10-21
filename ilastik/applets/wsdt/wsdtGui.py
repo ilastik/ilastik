@@ -230,7 +230,9 @@ class WsdtGui(LayerViewerGui):
             else:
                 self.channel_button.setText(",".join(map(str, channel_selections)))
 
-            self.threshold_box.setValue(ensure_float(op.Threshold.value))
+            # Preserve partially edited text instead of padding it with zeros on every keystroke.
+            if self.threshold_box.value() != op.Threshold.value:
+                self.threshold_box.setValue(ensure_float(op.Threshold.value))
             self.min_size_box.setValue(ensure_int(op.MinSize.value))
             self.sigma_box.setValue(ensure_float(op.Sigma.value))
             self.alpha_box.setValue(ensure_float(op.Alpha.value))
