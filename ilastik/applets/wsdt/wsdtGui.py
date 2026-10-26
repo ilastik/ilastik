@@ -233,9 +233,14 @@ class WsdtGui(LayerViewerGui):
             # Preserve partially edited text instead of padding it with zeros on every keystroke.
             if self.threshold_box.value() != op.Threshold.value:
                 self.threshold_box.setValue(ensure_float(op.Threshold.value))
+
+            if self.sigma_box.value() != op.Sigma.value:
+                self.sigma_box.setValue(ensure_float(op.Sigma.value))
+            if self.alpha_box.value() != op.Alpha.value:
+                self.alpha_box.setValue(ensure_float(op.Alpha.value))
+
             self.min_size_box.setValue(ensure_int(op.MinSize.value))
-            self.sigma_box.setValue(ensure_float(op.Sigma.value))
-            self.alpha_box.setValue(ensure_float(op.Alpha.value))
+
             self.invert_probabilities_box.setChecked(ensure_bool(op.InvertPixelProbabilities.value))
             self.enable_debug_box.setChecked(ensure_bool(op.EnableDebugOutputs.value))
             self.update_ws_button.setEnabled(op.Superpixels.ready())
