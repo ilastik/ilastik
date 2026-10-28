@@ -72,9 +72,7 @@ def _adjust_block_slicings(
     inner_local_begin = np.array(block.innerBlockLocal.begin) + (
         np.array(block.outerBlock.begin) - np.array(outer_begin)
     )
-    inner_local_end = inner_local_begin + np.array(block.innerBlockLocal.end) - np.array(
-        block.innerBlockLocal.begin
-    )
+    inner_local_end = inner_local_begin + np.array(block.innerBlockLocal.end) - np.array(block.innerBlockLocal.begin)
     inner_local_slicing = roiToSlice(inner_local_begin, inner_local_end)
 
     return inner_slicing, outer_slicing, inner_local_slicing
@@ -150,9 +148,7 @@ def parallel_watershed(
         nonlocal labels
 
         block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
-        inner_slicing, outer_slicing, inner_local_slicing = _adjust_block_slicings(
-            block, shape, min_outer_size
-        )
+        inner_slicing, outer_slicing, inner_local_slicing = _adjust_block_slicings(block, shape, min_outer_size)
 
         with Timer() as btimer:
             # write watershed result to the label array

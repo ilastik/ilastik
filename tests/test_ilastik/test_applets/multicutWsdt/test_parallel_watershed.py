@@ -156,7 +156,8 @@ class TestAdjustBlockSlicings:
         inner, outer, inner_local = _adjust_block_slicings(block, self.data_shape, self.min_outer)
         # Deficit = 20. outer_begin=0, extend_start = min(20, 0) = 0.
         # extend_end = min(20, 129-11) = 20. outer_end -> 31.
-        assert outer[0] == slice(0, 31)
+        assert outer == (slice(0, 31),) * 3
+        assert inner == (slice(0, 1),) * 3
         # inner_local_begin = 0 + (0 - 0) = 0, unchanged
         assert inner_local == (slice(0, 1),) * 3
 
@@ -172,7 +173,7 @@ class TestAdjustBlockSlicings:
         inner, outer, inner_local = _adjust_block_slicings(block, small_shape, 31)
         # Deficit = 31 - 4 = 27. extend_start = min(27, 6) = 6 -> begin=0
         # extend_end = min(21, 10-10) = 0 -> end=10. Size = 10 (partial).
-        assert outer[0] == slice(0, 10)
+        assert outer == (slice(0, 10),) * 3
         # inner_local_begin = 3 + (6 - 0) = 9
         assert inner_local == (slice(9, 10),) * 3
 
