@@ -837,7 +837,7 @@ class OpMultiChannelSelector(Operator):
             self.Output.meta.max_blockshape = tuple(max_blockshape)
 
     def execute(self, slot, subindex, roi, result):
-        channel_indexes: Tuple[int] = self.SelectedChannels.value
+        channel_indexes: Tuple[int] = self.SelectedChannels.value[roi.start[-1] : roi.stop[-1]]
 
         # make sure to request the minimum (consecutive) channels
         input_roi = roi.copy()
