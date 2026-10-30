@@ -16,6 +16,7 @@ def test_raises_channel_not_last(graph):
     vdata = vigra.taggedView(data, "yxz")
     op = OpMultiChannelSelector(graph=graph)
     with pytest.raises(ValueError):
+        op.SelectedChannels.setValue((0,))
         op.Input.setValue(vdata)
 
 

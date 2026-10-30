@@ -3,6 +3,7 @@ from builtins import next
 from builtins import range
 from builtins import object
 import sys
+from typing import Callable
 
 if sys.version_info.major >= 3:
     unicode = str
@@ -225,7 +226,7 @@ class Slot(object):
     ###########################
     #  A p i    M e t h o d s #
     ###########################
-    def _notifyGeneric(self, sig, function, **kwargs):
+    def _notifyGeneric(self, sig, function, **kwargs) -> Callable[[], None]:
         """
         Subscribe the given callback function (with optional kwargs) to the given signal.
 
