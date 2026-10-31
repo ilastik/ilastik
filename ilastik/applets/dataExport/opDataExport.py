@@ -223,6 +223,13 @@ class OpDataExport(Operator):
 
         # use partial formatting to fill in non-coordinate name fields
         name_format = self.OutputFilenameFormat.value
+        extension = next(fmt.extension for fmt in self.ALL_FORMATS if fmt.name == self.OutputFormat.value)
+        if extension:
+            # Replace the template's extension before a dotted nickname is inserted.
+            stem, suffix = os.path.splitext(name_format)
+            if "{" not in suffix and "}" not in suffix:
+                name_format = stem
+            name_format += "." + extension
         partially_formatted_name = path_formatter.format_path(name_format)
 
         # Convert to absolute path before configuring the internal op
