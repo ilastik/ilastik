@@ -44,6 +44,8 @@ class FeatureSelectionSerializer(AppletSerializer):
             if not self.ignoreDirty:
                 self._dirty = True
 
+        self.topLevelOperator.SelectedChannels.notifyDirty(bind(handleDirty))
+        self.topLevelOperator.SelectedChannels.notifyUnready(bind(handleDirty))
         self.topLevelOperator.FeatureIds.notifyDirty(bind(handleDirty))
         self.topLevelOperator.Scales.notifyDirty(bind(handleDirty))
         self.topLevelOperator.ComputeIn2d.notifyDirty(bind(handleDirty))
@@ -61,8 +63,11 @@ class FeatureSelectionSerializer(AppletSerializer):
         deleteIfPresent(topGroup, "SelectionMatrix")
         deleteIfPresent(topGroup, "FeatureListFilename")
         deleteIfPresent(topGroup, "ComputeIn2d")
-
+        deleteIfPresent(topGroup, "SelectedChannels")
         # Store the new values (as numpy arrays)
+
+        if self.topLevelOperator.SelectedChannels.ready():
+            topGroup.create_dataset("SelectedChannels", data=self.topLevelOperator.SelectedChannels.value)
 
         topGroup.create_dataset("Scales", data=self.topLevelOperator.Scales.value)
 
@@ -98,6 +103,12 @@ class FeatureSelectionSerializer(AppletSerializer):
                 self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
             except KeyError:
                 pass  # older ilastik versions did not support feature computation in 2d
+
+            try:
+                self.topLevelOperator.SelectedChannels.setValue(tuple(map(int, topGroup["SelectedChannels"][()])))
+            except KeyError:
+                self.topLevelOperator.SelectedChannels.disconnect()
+                pass  # keep compat with older versions (pre 1.5.0 era)
 
             featureIds = list(map(lambda s: s.decode("utf-8"), topGroup["FeatureIds"][()]))
         except KeyError:
@@ -146,9 +157,6 @@ class FeatureSelectionSerializer(AppletSerializer):
         (in memory) does not match the state of the HDF5 group on disk.
         SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return self._dirty
-
-    def unload(self):
-        self.topLevelOperator.SelectionMatrix.disconnect()
 
 
 class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
@@ -237,9 +245,6 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
         (in memory) does not match the state of the HDF5 group on disk.
         SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return False
-
-    def unload(self):
-        self.topLevelOperator.SelectionMatrix.disconnect()
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False

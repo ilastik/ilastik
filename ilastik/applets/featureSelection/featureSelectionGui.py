@@ -39,6 +39,7 @@ from volumina.utility import preferences
 from volumina.widgets.layercontextmenu import layercontextmenu
 
 # ilastik
+from ilastik.widgets.channelSelectionWidget import ChannelSelectionWidget
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
@@ -48,7 +49,6 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def stopAndCleanUp(self):
         super(FeatureSelectionGui, self).stopAndCleanUp()
-
+        self.channelSelectionWidget.cleanUp()
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
@@ -108,6 +108,10 @@ class FeatureSelectionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         # (We don't pass self here because we keep the drawer ui in a separate object.)
         self.drawer = uic.loadUi(localDir + "/featureSelectionDrawer.ui")
+        self.channelSelectionWidget = ChannelSelectionWidget(
+            self.topLevelOperatorView.InputImage, self.topLevelOperatorView.SelectedChannels, self.drawer
+        )
+        self.drawer.verticalLayout.insertWidget(0, self.channelSelectionWidget)
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.drawer.UsePrecomputedFeaturesButton.clicked.connect(self.onUsePrecomputedFeaturesButtonClicked)
         dbg = ilastik_config.getboolean("ilastik", "debug")
@@ -185,11 +189,12 @@ class FeatureSelectionGui(LayerViewerGui):
             rawLayer.name = "Raw Data (display only)"
             layers.append(rawLayer)
 
+        channel_subselection_slot = opFeatureSelection.SelectedChannelsImage
         featureMultiSlot = opFeatureSelection.FeatureLayers
-        if inputSlot.ready() and featureMultiSlot.ready():
+        if channel_subselection_slot.ready() and featureMultiSlot.ready():
             for featureIndex, featureSlot in enumerate(featureMultiSlot):
                 assert featureSlot.ready()
-                layers += self.getFeatureLayers(inputSlot, featureSlot)
+                layers += self.getFeatureLayers(channel_subselection_slot, featureSlot)
 
             layers[0].visible = True
         return layers
@@ -212,16 +217,15 @@ class FeatureSelectionGui(LayerViewerGui):
                 "The feature selection Gui does not yet support features with more than three channels per "
                 "input channel. Some features will not be displayed entirely."
             )
-
-        for inputChannel in range(numInputChannels):
-            # Determine the name for this feature
-            featureName = featureSlot.meta.description
-            assert featureName is not None
+        channel_names = inputSlot.meta.channel_names
+        if channel_names is None:
+            # restore "legacy" special case
             if 2 <= numInputChannels <= 3:
-                channelNames = ["R", "G", "B"]
-                featureName += " (" + channelNames[inputChannel] + ")"
-            if numInputChannels > 3:
-                featureName += " (Ch. {})".format(inputChannel)
+                channel_names = ["R", "G", "B"][:numInputChannels]
+            else:
+                channel_names = [f"Ch. {i}" for i in range(numInputChannels)]
+        for inputChannel in range(numInputChannels):
+            featureName = f"{featureSlot.meta.description} ({channel_names[inputChannel]})"
 
             opSubRegion = OpSubRegion(parent=self.topLevelOperatorView.parent)
             opSubRegion.Input.connect(featureSlot)

@@ -23,12 +23,10 @@ import logging
 import numpy
 import sys
 
-# lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpSlicedBlockedArrayCache
-from lazyflow.operators import OpPixelFeaturesPresmoothed
-from lazyflow.operators import OpReorderAxes
+from lazyflow.operators import OpPixelFeaturesPresmoothed, OpReorderAxes, OpSlicedBlockedArrayCache
+from lazyflow.operators.generic import OpMultiChannelSelector
 from lazyflow.operatorWrapper import OperatorWrapper
 
 from ilastik.applets.featureSelection import FeatureSelectionConstraintError
@@ -78,6 +76,8 @@ class OpFeatureSelectionNoCache(Operator):
     # Multiple input images
     InputImage = InputSlot()
 
+    SelectedChannels = InputSlot(optional=True)  # Unset means all raw channels.
+
     # The following input slots are applied uniformly to all input images
     SelectionMatrix = InputSlot()  # A matrix of bools indicating which features to output
     FeatureIds = InputSlot(value=getFeatureIdOrder())  # The list of features to compute
@@ -96,6 +96,7 @@ class OpFeatureSelectionNoCache(Operator):
     # (Training a classifier benefits from caching, but predicting with an existing classifier does not.)
     OutputImage = OutputSlot()
 
+    SelectedChannelsImage = OutputSlot()
     # For the GUI, we also provide each feature as a separate slot in this multislot
     FeatureLayers = OutputSlot(level=1)
 
@@ -112,10 +113,19 @@ class OpFeatureSelectionNoCache(Operator):
         self.opPixelFeatures.ComputeIn2d.connect(self.ComputeIn2d)
         self.opReorderIn = OpReorderAxes(parent=self)
         self.opReorderIn.AxisOrder.setValue("tczyx")
-        self.opReorderIn.Input.connect(self.InputImage)
+        # TODO: not requiring channel will result in on op less
+        self.opReorderChannels = OpReorderAxes(parent=self)
+        self.opReorderChannels.AxisOrder.setValue("tzyxc")
+        self.opReorderChannels.Input.connect(self.InputImage)
+        self.opChannelSelector = OpMultiChannelSelector(parent=self)
+        self.opChannelSelector.SelectedChannels.connect(self.SelectedChannels)
+        self.opChannelSelector.Input.connect(self.opReorderChannels.Output)
+        self.opReorderIn.Input.connect(self.opChannelSelector.Output)
         self.opPixelFeatures.Input.connect(self.opReorderIn.Output)
         self.opReorderOut = OpReorderAxes(parent=self)
         self.opReorderOut.Input.connect(self.opPixelFeatures.Output)
+        self.opReorderSelectedLayers = OpReorderAxes(parent=self)
+        self.opReorderSelectedLayers.Input.connect(self.opChannelSelector.Output)
         self.opReorderLayers = OperatorWrapper(OpReorderAxes, parent=self, broadcastingSlotNames=["AxisOrder"])
         self.opReorderLayers.Input.connect(self.opPixelFeatures.Features)
 
@@ -128,11 +138,13 @@ class OpFeatureSelectionNoCache(Operator):
 
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
+        self.opReorderSelectedLayers.AxisOrder.setValue(oldAxes)
 
         # Get features from external file
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
+            self.SelectedChannelsImage.disconnect()
 
             axistags = self.InputImage.meta.axistags
 
@@ -194,6 +206,7 @@ class OpFeatureSelectionNoCache(Operator):
             # Connect our external outputs to our internal operators
             self.OutputImage.connect(self.opReorderOut.Output)
             self.FeatureLayers.connect(self.opReorderLayers.Output)
+            self.SelectedChannelsImage.connect(self.opReorderSelectedLayers.Output)
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
