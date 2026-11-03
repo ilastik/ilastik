@@ -844,6 +844,9 @@ class OpMultiChannelSelector(Operator):
 
         self._selected_channels = selected_channels
 
+        channel_names = self.Input.meta.channel_names or [f"Ch. {i}" for i in range(max_channel)]
+        self.Output.meta.channel_names = [channel_names[s] for s in selected_channels]
+
     def execute(self, slot, subindex, roi, result):
         channel_indexes: Tuple[int] = self._selected_channels[roi.start[-1] : roi.stop[-1]]
 
