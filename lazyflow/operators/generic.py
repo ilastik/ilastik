@@ -801,7 +801,7 @@ class OpMultiChannelSelector(Operator):
     # tuple mapping output_channels to input channels
     # any mapping is valid, even with repeats (1, 1, 1)
     # channels must exist in input of course
-    SelectedChannels = InputSlot()
+    SelectedChannels = InputSlot(optional=True)
 
     Output = OutputSlot()
 
