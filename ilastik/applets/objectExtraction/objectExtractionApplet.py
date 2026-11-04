@@ -42,7 +42,7 @@ class ObjectExtractionAppletBase(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ["Features"]
+        return ["Features", "SelectedChannels"]
 
     @property
     def singleLaneGuiClass(self):
