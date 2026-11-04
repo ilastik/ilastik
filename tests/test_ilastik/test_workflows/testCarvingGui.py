@@ -249,11 +249,19 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             QApplication.processEvents()
 
             op_carving.saveObjectAs("Object 1")
+            # completed segments are shown in the 3D view by default
+            # https://github.com/ilastik/ilastik/issues/3239
+            QApplication.processEvents()
+            if gui.currentGui().render:
+                assert "Object 1" in gui.currentGui()._shownObjects3D, "Saved objects should be shown in 3D by default"
             op_carving.deleteObject("<not saved yet>")
 
             op_carving.loadObject("Object 1")
             # Need to save back because loading removes it from the completed segments layer (which we assert below...)
             op_carving.saveObjectAs("Object 1")
+            QApplication.processEvents()
+            if gui.currentGui().render:
+                assert "Object 1" in gui.currentGui()._shownObjects3D, "Re-saving must not hide the object in 3D"
 
             # export the mesh:
             req = gui.currentGui()._exportMeshes(["Object 1"], [self.output_obj_file])

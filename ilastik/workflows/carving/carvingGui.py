@@ -129,6 +129,9 @@ class CarvingGui(LabelingGui):
             try:
                 self._renderMgr = RenderingManager(self.editor.view3d)
                 self._shownObjects3D = {}
+                # Objects the user explicitly removed from the 3D view.
+                # They are not shown again by default.
+                self._hiddenObjects3D = set()
                 self.render = True
             except:
                 self.render = False
@@ -228,6 +231,11 @@ class CarvingGui(LabelingGui):
         super(CarvingGui, self)._after_init()
         if self.render:
             self._toggleSegmentation3D()
+            # The layers (and with them the colors of the completed segments) are
+            # only set up after this point. Re-render as soon as they are
+            # available, so that completed segments show up in the 3D view by
+            # default.
+            self.layersUpdated.connect(self._update_rendering)
 
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled(ensure_bool(self.topLevelOperatorView.CanObjectBeSaved.value))
@@ -317,10 +325,24 @@ class CarvingGui(LabelingGui):
         if was_object_previously_saved:
             if is_name_changed:
                 self.topLevelOperatorView.deleteObject(old_name)
-            else:
-                self._renderMgr.removeObject(old_name)
+            elif self.render:
+                # Re-saving may have changed the extent of the object: drop it
+                # from the 3D view and re-add it under a different label. This
+                # makes the rendering manager rebuild its mesh from the
+                # up-to-date segmentation (a changed label guarantees that the
+                # rendering manager sees new data and regenerates the mesh).
+                # The old label is only released after the view was updated, so
+                # that the object cannot end up with its old label again.
+                stale_label = self._shownObjects3D.pop(old_name, None)
                 self._renderMgr.invalidateObject(old_name)
-                self._shownObjects3D.pop(old_name, None)
+                self._showCompletedSegmentsIn3D()
+                self._update_rendering()
+                if stale_label is not None:
+                    self._renderMgr.removeObject(stale_label)
+
+        # Completed segments are shown in the 3D view by default, so show the
+        # object that was just saved instead of waiting for the next update.
+        self._update_rendering()
 
     def onShowObjectNames(self):
         """show object names and allow user to load/delete them"""
@@ -410,6 +432,7 @@ class CarvingGui(LabelingGui):
                 if name in self._shownObjects3D:
                     # Remove
                     def onRemove3D(_name):
+                        self._hiddenObjects3D.add(_name)
                         label = self._shownObjects3D.pop(_name)
                         self._renderMgr.removeObject(label)
                         self._update_rendering()
@@ -419,7 +442,12 @@ class CarvingGui(LabelingGui):
                 else:
                     # Show
                     def onShow3D(_name):
-                        label = self._renderMgr.addObject()
+                        self._hiddenObjects3D.discard(_name)
+                        try:
+                            label = self._renderMgr.addObject()
+                        except RuntimeError:
+                            logger.warning("Cannot show %r in the 3D view: object limit reached.", _name)
+                            return
                         self._shownObjects3D[_name] = label
                         self._update_rendering()
 
@@ -597,19 +625,46 @@ class CarvingGui(LabelingGui):
 
         self._update_rendering()
 
+    def _showCompletedSegmentsIn3D(self):
+        """Show all completed segments in the 3D view.
+
+        Segments that the user explicitly removed from the 3D view are skipped,
+        they stay hidden until the user shows them again.
+        """
+        if not self.render:
+            return
+
+        for name in self.topLevelOperatorView.MST.value.object_lut:
+            if name in self._shownObjects3D or name in self._hiddenObjects3D:
+                continue
+            try:
+                label = self._renderMgr.addObject()
+            except RuntimeError:
+                # The rendering manager only supports a limited number of objects.
+                logger.warning("Cannot show %r in the 3D view: object limit reached.", name)
+                break
+            self._shownObjects3D[name] = label
+
     def _update_rendering(self):
         if not self.render:
             return
 
         op = self.topLevelOperatorView
+        if not op.MST.ready():
+            return
+
         if not self._renderMgr.ready:
             shape = op.InputData.meta.shape[1:4]
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
-        # remove nonexistent objects
-        self._shownObjects3D = dict(
-            (k, v) for k, v in self._shownObjects3D.items() if k in list(op.MST.value.object_lut.keys())
-        )
+        # Completed segments are shown in the 3D view by default.
+        self._showCompletedSegmentsIn3D()
+
+        # remove nonexistent objects and release the labels they were using
+        existing_names = set(op.MST.value.object_lut.keys())
+        for name in [name for name in self._shownObjects3D if name not in existing_names]:
+            self._renderMgr.removeObject(self._shownObjects3D.pop(name))
+        self._hiddenObjects3D.intersection_update(existing_names)
 
         lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int32)
         label_name_map = {}
@@ -632,7 +687,9 @@ class CarvingGui(LabelingGui):
     def _update_colors(self):
         """Update colors of objects in 3D viewport"""
         op = self.topLevelOperatorView
-        if not self._shownObjects3D.items():
+        # The done segmentation layer is only available once the layers have
+        # been set up, which happens after the GUI is initialized.
+        if self._doneSegmentationLayer is None or not self._shownObjects3D:
             return
         ctable = self._doneSegmentationLayer.colorTable
 
