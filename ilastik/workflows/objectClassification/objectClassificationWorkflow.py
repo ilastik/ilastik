@@ -328,7 +328,7 @@ class ObjectClassificationWorkflow(Workflow):
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
-        opBlockwiseObjectClassification.RawImage.connect(opObjClassification.RawImages)
+        opBlockwiseObjectClassification.RawImage.connect(opObjExtraction.SelectedChannelsImage)
         opBlockwiseObjectClassification.SegmentationImage.connect(segmentation_slot)
         opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
         opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
@@ -417,6 +417,7 @@ class ObjectClassificationWorkflow(Workflow):
         object_features_ready = (
             self.objectExtractionApplet.topLevelOperator.Features.ready()
             and len(self.objectExtractionApplet.topLevelOperator.Features.value) > 0
+            and self.objectExtractionApplet.topLevelOperator.SelectedChannelsImage.ready()
         )
         cumulated_readyness = cumulated_readyness and object_features_ready
         self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)

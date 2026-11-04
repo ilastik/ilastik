@@ -17,6 +17,7 @@ def mock_op(graph):
         "LabelImageCacheInput": SlotDesc(typ_="input", level=1, dtype=numpy.uint32, shape=(5, 6, 1), axistags="yxc"),
         "CleanLabelBlocks": SlotDesc(typ_="output", level=1, dtype=object, shape=(1,)),
         "Features": SlotDesc(typ_="input", level=0, dtype=object, shape=(1,)),
+        "SelectedChannels": SlotDesc(typ_="input", level=0, dtype=object, shape=(1,)),
         "BlockwiseRegionFeatures": SlotDesc(typ_="output", level=1),
         "RegionFeaturesCacheInput": SlotDesc(typ_="input", level=1),
         "RegionFeaturesCleanBlocks": SlotDesc(typ_="output", level=1),
