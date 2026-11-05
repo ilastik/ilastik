@@ -619,10 +619,11 @@ class CarvingGui(LabelingGui):
         self._update_rendering()
 
     def _segmentation_dirty(self):
-        if self.render:
-            self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
-            self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
-
+        # The current segmentation is only invalidated when its data actually
+        # changed, which happens in _update_rendering(). Invalidating it here
+        # unconditionally would drop the mesh from the view without the
+        # rendering manager ever regenerating it, because update() returns
+        # early when it sees unchanged data (see #3263).
         self._update_rendering()
 
     def _showCompletedSegmentsIn3D(self):
@@ -664,6 +665,9 @@ class CarvingGui(LabelingGui):
         existing_names = set(op.MST.value.object_lut.keys())
         for name in [name for name in self._shownObjects3D if name not in existing_names]:
             self._renderMgr.removeObject(self._shownObjects3D.pop(name))
+            # also drop the cached mesh, otherwise a later object with the same
+            # name would be shown with the stale geometry
+            self._renderMgr.invalidateObject(name)
         self._hiddenObjects3D.intersection_update(existing_names)
 
         lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int32)
@@ -680,7 +684,18 @@ class CarvingGui(LabelingGui):
             label_name_map[CURRENT_SEGMENTATION_NAME] = self._segmentation_3d_label
             lut[:] = numpy.where(op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut)
 
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32], label_name_map  # (Advanced indexing)
+        volume = lut[op.MST.value.supervoxelUint32]  # (Advanced indexing)
+
+        # The rendering manager only rebuilds meshes for data it has not seen
+        # before: update() returns early while its dirty flag is unset, and a
+        # mesh that is dropped from the cache without new data following would
+        # simply be gone. Therefore the current segmentation is only
+        # invalidated when its data really changed -- so pressing "Segment"
+        # without changing anything keeps the object in the 3D view (see #3263).
+        if self._showSegmentationIn3D and not numpy.array_equal(volume, self._renderMgr.volume):
+            self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
+
+        self._renderMgr.volume = volume, label_name_map
         self._update_colors()
         self._renderMgr.update()
 
