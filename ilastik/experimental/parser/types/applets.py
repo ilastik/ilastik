@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,30 +19,22 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 # pyright: strict
-from codecs import decode
 from collections import OrderedDict
-from pathlib import Path
-from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type
+from typing import Annotated, Dict, List, Literal, Optional
 
-import annotated_types
 import numpy
-import numpy.typing as npt
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from ilastik.applets.base.appletSerializer.legacyClassifiers import (
-    deserialize_classifier,
-    deserialize_classifier_factory,
+from .base import (
+    DatasetInfo,
+    H5Array,
+    H5Classifier,
+    H5ClassifierFactory,
+    H5List,
+    H5Literal,
+    H5String,
+    LaneName,
 )
-from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
-from ilastik.experimental.parser._h5helpers import (
-    deserialize_arraylike_from_h5,
-    deserialize_axistags_from_h5,
-    deserialize_str_list_from_h5,
-)
-from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
-
-NDShape = Annotated[Tuple[int, ...], annotated_types.Len(2, 6)]
-LaneName = Annotated[str, StringConstraints(pattern=r"lane\d{4}")]
 
 WorkflowName = Literal[
     "Animal Conservation Tracking Workflow from Binary Image",
@@ -70,29 +62,11 @@ WorkflowName = Literal[
 
 
 class ProjectBase(BaseModel):
-    workflow_name: Annotated[
-        WorkflowName,
-        BeforeValidator(decode),
-        BeforeValidator(deserialize_arraylike_from_h5),
-    ] = Field(alias="workflowName")
-
-
-class VigraAxisTags(BaseModel):
-    key: str
-    typeFlags: int
-    resolution: int
-    description: str
-
-
-class DatasetInfo(BaseModel):
-    axistags: Annotated[List[VigraAxisTags], BeforeValidator(deserialize_axistags_from_h5)]
-    shape: Annotated[
-        NDShape, BeforeValidator(lambda x: tuple(x.tolist())), BeforeValidator(deserialize_arraylike_from_h5)
-    ]
+    workflow_name: H5Literal[WorkflowName] = Field(alias="workflowName")
 
 
 class InputData(BaseModel):
-    role_names: Annotated[List[str], BeforeValidator(deserialize_str_list_from_h5)] = Field(alias="Role Names")
+    role_names: List[str] = Field(alias="Role Names")
     infos: OrderedDict[
         LaneName, Dict[str, Annotated[Optional[DatasetInfo], BeforeValidator(lambda x: None if len(x) == 0 else x)]]
     ]
@@ -130,32 +104,36 @@ class InputData(BaseModel):
         return "".join(ax for ax in self.axis_order if ax in "xyz")
 
 
-class FeatureMatrix(BaseModel):
+class FeatureSelection(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
-    names: Annotated[List[str], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="FeatureIds")
-    scales: Annotated[List[float], BeforeValidator(deserialize_arraylike_from_h5)] = Field(alias="Scales")
-    selections: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
-        alias="SelectionMatrix"
-    )
-    compute_in_2d: Annotated[npt.NDArray[numpy.bool_], BeforeValidator(deserialize_arraylike_from_h5)] = Field(
-        alias="ComputeIn2d"
-    )
+    compute_in_2d: H5Array[numpy.bool_] = Field(alias="ComputeIn2d")
+    feature_ids: H5List[str] = Field(alias="FeatureIds")
+    scales: H5List[float] = Field(alias="Scales")
+    selections: H5Array[numpy.bool_] = Field(alias="SelectionMatrix")
+    storage_version: H5String = Field(alias="StorageVersion")
+
+    @property
+    def features_per_scale(self) -> Dict[float, List[str]]:
+        sigmas: Dict[float, List[str]] = {}
+        feature_matrix = self.selections
+        sigma_values = self.scales
+        feature_names = self.feature_ids
+
+        for i, sigma in enumerate(sigma_values):
+            sigmas[sigma] = [feature_names[ind] for ind, x in enumerate(feature_matrix[:, i]) if x]
+
+        return sigmas
 
 
-class Classifier(BaseModel):
+class PixelClassification(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
 
-    classifier_factory: Annotated[
-        LazyflowVectorwiseClassifierFactoryABC, BeforeValidator(deserialize_classifier_factory)
-    ] = Field(alias="ClassifierFactory")
-    classifier: Annotated[
-        LazyflowVectorwiseClassifierABC,
-        BeforeValidator(deserialize_classifier),
-    ] = Field(alias="ClassifierForests")
+    classifier: H5Classifier = Field(alias="ClassifierForests")
+    classifier_factory: H5ClassifierFactory = Field(alias="ClassifierFactory")
     label_names: List[str] = Field(alias="LabelNames")
 
     @property
