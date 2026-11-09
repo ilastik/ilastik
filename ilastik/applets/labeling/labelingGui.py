@@ -41,6 +41,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 from volumina import colortables
+from volumina.brushingcontroller import DrawLabelCommand
 from lazyflow.slot import InputSlot, OutputSlot
 
 # ilastik
@@ -390,6 +391,7 @@ class LabelingGui(LayerViewerGui):
             self.volumeEditorWidget.editor.navCtrl.panSlicingViews(pos, [0, 1, 2])
 
         label_explorer_widget.positionRequested.connect(_goto)
+        label_explorer_widget.deleteRequested.connect(partial(self._delete_explorer_annotations, label_explorer_widget))
 
         def update_labels(*args, **kwargs):
             label_names = [x.name for x in self.labelListData]
@@ -402,6 +404,22 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.rowsRemoved.connect(update_labels)
 
         return label_explorer_widget
+
+    def _delete_explorer_annotations(self, label_explorer, annotations):
+        masks = label_explorer.erasure_masks(annotations)
+        eraser = self._labelingSlots.labelEraserValue.value
+        sink = self.editor.brushingController._dataSink
+        undo_stack = self.editor._undoStack
+        undo_stack.beginMacro("Delete annotations")
+        try:
+            for tagged_slicing, mask in masks:
+                slicing = tuple(tagged_slicing.get(k, slice(0, 1)) for k in "txyzc")
+                labels = numpy.where(mask.withAxes("txyzc"), eraser, 0).astype("uint8")
+                # Read after preceding deletions, since component bounding boxes may overlap.
+                old_data = sink.request(slicing).wait().copy()
+                undo_stack.push(DrawLabelCommand(sink=sink, slicing=slicing, old_data=old_data, labels=labels))
+        finally:
+            undo_stack.endMacro()
 
     def _cleanup_label_explorer(self):
         wdgt = self.label_explorer_widget

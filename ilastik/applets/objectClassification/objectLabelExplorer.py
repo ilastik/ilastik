@@ -97,7 +97,9 @@ class ObjectLabelExplorerWidget(LabelExplorerBase):
 
                 labs.append(
                     AnnotationAnchor(
-                        position={"t": timepoint, "x": x, "y": y, "z": z}, label=int((labels[timepoint][n]))
+                        position={"t": timepoint, "x": x, "y": y, "z": z},
+                        label=int((labels[timepoint][n])),
+                        identifier=(timepoint, int(n)),
                     )
                 )
 

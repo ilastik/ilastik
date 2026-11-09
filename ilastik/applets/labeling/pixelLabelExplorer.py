@@ -23,6 +23,7 @@ from functools import partial
 from typing import Dict, List, Tuple
 
 import vigra
+from skimage.segmentation import flood
 from qtpy.QtCore import Qt
 
 from ilastik.widgets.labelExplorer import LabelExplorerBase, LookupDelegate, AnnotationAnchor
@@ -147,5 +148,31 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
         annotation_anchors: list[AnnotationAnchor] = []
         for k, v in self._regions_dict.items():
             if k == v:
-                annotation_anchors.append(AnnotationAnchor(label=k.label, position=k.tagged_pixel_anchor))
+                annotation_anchors.append(AnnotationAnchor(label=k.label, position=k.tagged_pixel_anchor, identifier=k))
         return annotation_anchors
+
+    def erasure_masks(self, annotations: list[AnnotationAnchor]):
+        """Return exact component masks, including each selected annotation's blocks.
+
+        Bounding boxes can contain other annotations, even of the same class. Flood
+        from each region's annotated pixel to avoid deleting those neighbors.
+        Resolve all region identities before any writes invalidate the region cache.
+        """
+        selected = {annotation.identifier for annotation in annotations}
+        regions = []
+        for region in self._regions_dict:
+            anchor = region
+            while self._regions_dict[anchor] != anchor:
+                anchor = self._regions_dict[anchor]
+            if anchor in selected:
+                regions.append(region)
+
+        masks = []
+        for region in regions:
+            data = self._label_slot[region.slices].wait()
+            seed = tuple(int(region.tagged_pixel_anchor[k] - sl.start) for k, sl in zip(self._axiskeys, region.slices))
+            if data[seed] != region.label:
+                continue
+            mask = vigra.taggedView(flood(data, seed), "".join(self._axiskeys))
+            masks.append((region.tagged_slicing, mask))
+        return masks

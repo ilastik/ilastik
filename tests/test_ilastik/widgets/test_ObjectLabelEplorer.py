@@ -238,3 +238,87 @@ def test_populate_raises_for_unexpected_object_center_dimension(
     qtbot.waitExposed(label_explorer)
     with expectation:
         label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
+
+
+@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
+def test_delete_selected_objects_undo_redo(qtbot, request, gui_variant, graph):
+    from functools import partial
+    from types import SimpleNamespace
+
+    from qtpy.QtCore import Qt
+    from qtpy.QtWidgets import QUndoStack
+
+    from ilastik.applets.objectClassification.objectClassificationGui import ObjectClassificationGui
+
+    from lazyflow.graph import Operator, InputSlot
+    from lazyflow.rtype import List
+    from lazyflow.stype import Opaque
+
+    class ObjectLabelStore(Operator):
+        Labels = InputSlot(stype=Opaque, rtype=List)
+
+        def setupOutputs(self):
+            pass
+
+        def propagateDirty(self, slot, subindex, roi):
+            pass
+
+    store = ObjectLabelStore(graph=graph)
+    label_op = SimpleNamespace(Input=store.Labels)
+    features = request.getfixturevalue("feature_op_2d" if gui_variant.endswith("2d") else "feature_op_3d")
+    explorer = ObjectLabelExplorerWidget(features.Output, store.Labels, axiskeys="xy")
+    qtbot.addWidget(explorer)
+    label_op.Input.setValue({0: numpy.array([0.0, 1.0, 1.0])})
+    explorer.show()
+    qtbot.waitExposed(explorer)
+    stack = QUndoStack(explorer)
+    gui = SimpleNamespace(_undoStack=stack, op=SimpleNamespace(LabelInputs=label_op.Input))
+    explorer.deleteRequested.connect(partial(ObjectClassificationGui._delete_explorer_annotations, gui))
+    explorer.tableWidget.sortItems(0, Qt.DescendingOrder)
+    # The object center need not be inside the object; use the stored object ID.
+    selected = explorer.tableWidget.item(0, 0).data(Qt.UserRole + 1).identifier[1]
+    explorer.tableWidget.selectRow(0)
+    qtbot.mouseClick(explorer.deleteButton, Qt.LeftButton)
+    expected = numpy.array([0.0, 1.0, 1.0])
+    expected[selected] = 0
+    numpy.testing.assert_array_equal(label_op.Input.value[0], expected)
+    assert explorer.tableWidget.rowCount() == 1
+    stack.undo()
+    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 1, 1])
+    stack.redo()
+    numpy.testing.assert_array_equal(label_op.Input.value[0], expected)
+    stack.undo()
+    explorer.tableWidget.selectAll()
+    qtbot.mouseClick(explorer.deleteButton, Qt.LeftButton)
+    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 0, 0])
+    assert explorer.tableWidget.rowCount() == 0
+    assert not explorer.deleteButton.isEnabled()
+    stack.undo()
+    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 1, 1])
+    explorer.cleanup()
+
+
+@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
+def test_delete_key_takes_precedence_over_application_shortcut(qtbot, request, label_op, gui_variant):
+    from qtpy.QtCore import Qt
+    from qtpy.QtWidgets import QShortcut
+
+    explorer = request.getfixturevalue(gui_variant)
+    label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
+    # Applets can register "Del" through volumina's shortcut manager (e.g. Counting's "Delete a Box"),
+    # which creates an application-wide shortcut.
+    shortcut_activations = []
+    QShortcut("Del", explorer, lambda: shortcut_activations.append(True), context=Qt.ApplicationShortcut)
+    explorer.show()
+    explorer.activateWindow()
+    qtbot.waitUntil(explorer.isActiveWindow)
+    table = explorer.tableWidget
+    table.selectRow(0)
+    expected = [table.item(0, 0).data(Qt.UserRole + 1)]
+    requests = []
+    explorer.deleteRequested.connect(requests.append)
+    table.setFocus()
+    qtbot.keyClick(table, Qt.Key_Delete)
+    assert requests == [expected]
+    assert shortcut_activations == []
+    explorer.cleanup()
