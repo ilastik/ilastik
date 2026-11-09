@@ -13,6 +13,7 @@ from qtpy.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import FilesystemDatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
+from ilastik.workflows.carving.carvingGui import CURRENT_SEGMENTATION_NAME
 from lazyflow.utility.timer import Timer
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -248,12 +249,49 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             gui.currentGui().labelingDrawerUi.segment.click()
             QApplication.processEvents()
 
+            # Pressing "Segment" again without changing anything must keep the
+            # current segmentation in the 3D view: its mesh may only be dropped
+            # when the data behind it really changed, because the rendering
+            # manager regenerates meshes from new data only.
+            # https://github.com/ilastik/ilastik/pull/3263
+            if gui.currentGui().render:
+                render_mgr = gui.currentGui()._renderMgr
+                invalidated = []
+                original_invalidate = render_mgr.invalidateObject
+
+                def recording_invalidate(name):
+                    invalidated.append(name)
+                    return original_invalidate(name)
+
+                render_mgr.invalidateObject = recording_invalidate
+                try:
+                    # make sure the current segmentation is pushed already
+                    gui.currentGui()._update_rendering()
+                    QApplication.processEvents()
+                    invalidated.clear()
+                    # same segmentation, nothing changed in between
+                    gui.currentGui()._segmentation_dirty()
+                    QApplication.processEvents()
+                    assert (
+                        CURRENT_SEGMENTATION_NAME not in invalidated
+                    ), "An unchanged segmentation must not be dropped from the 3D view"
+                finally:
+                    render_mgr.invalidateObject = original_invalidate
+
             op_carving.saveObjectAs("Object 1")
+            # completed segments are shown in the 3D view by default
+            # https://github.com/ilastik/ilastik/issues/3239
+            QApplication.processEvents()
+            if gui.currentGui().render:
+                assert "Object 1" in gui.currentGui()._shownObjects3D, "Saved objects should be shown in 3D by default"
             op_carving.deleteObject("<not saved yet>")
 
             op_carving.loadObject("Object 1")
             # Need to save back because loading removes it from the completed segments layer (which we assert below...)
             op_carving.saveObjectAs("Object 1")
+            QApplication.processEvents()
+            if gui.currentGui().render:
+                assert "Object 1" in gui.currentGui()._shownObjects3D, "Re-saving must not hide the object in 3D"
 
             # export the mesh:
             req = gui.currentGui()._exportMeshes(["Object 1"], [self.output_obj_file])
