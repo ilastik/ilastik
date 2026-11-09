@@ -139,6 +139,10 @@ class GuiTestSuite:
 
         def test():
             item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+            if item.session.shouldfail or item.session.shouldstop:
+                while not self._queue.empty():
+                    self._queue.get()
+                    self._queue.task_done()
 
         self._current_thread = threading.Thread(target=test)
         self._current_thread.daemon = True
@@ -179,6 +183,10 @@ def pytest_runtestloop(session):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
             ThreadRouter.app_is_shutting_down = False
+            if session.shouldfail:
+                raise session.Failed(session.shouldfail)
+            if session.shouldstop:
+                raise session.Interrupted(session.shouldstop)
 
     elif guitests:
         warnings.warn("Skipping legacy GUI test to enable please use --run-legacy-gui option\n")
