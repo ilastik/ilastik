@@ -16,6 +16,7 @@ def test_raises_channel_not_last(graph):
     vdata = vigra.taggedView(data, "yxz")
     op = OpMultiChannelSelector(graph=graph)
     with pytest.raises(ValueError):
+        op.SelectedChannels.setValue((0,))
         op.Input.setValue(vdata)
 
 
@@ -129,3 +130,15 @@ def test_select_multi_channels(graph, selected_channels, random_data_5c):
 
     output = op.Output[()].wait()
     numpy.testing.assert_array_equal(output, random_data_5c[..., selected_channels])
+
+
+@pytest.mark.parametrize("selection", [(0, 2, 4), (0, 1, 3)])
+@pytest.mark.parametrize("start,stop", [(0, 1), (1, 2), (1, 3)])
+def test_partial_channel_roi(
+    graph, random_data_5c: vigra.VigraArray, selection: tuple[int, ...], start: int, stop: int
+):
+    op = OpMultiChannelSelector(graph=graph)
+    op.SelectedChannels.setValue(selection)
+    op.Input.setValue(random_data_5c)
+    output = op.Output[2:7, 1:4, start:stop].wait()
+    numpy.testing.assert_array_equal(output, random_data_5c[2:7, 1:4, selection[start:stop]])

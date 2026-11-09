@@ -801,9 +801,13 @@ class OpMultiChannelSelector(Operator):
     # tuple mapping output_channels to input channels
     # any mapping is valid, even with repeats (1, 1, 1)
     # channels must exist in input of course
-    SelectedChannels = InputSlot(value=(0,))
+    SelectedChannels = InputSlot(optional=True)
 
     Output = OutputSlot()
+
+    def __init__(self, parent=None, graph=None, write_logs=False):
+        super().__init__(parent, graph, write_logs)
+        self._selected_channels: None | tuple[int, ...] = None
 
     def setupOutputs(self):
         if self.Input.meta.getAxisKeys()[-1] != "c":
@@ -812,7 +816,9 @@ class OpMultiChannelSelector(Operator):
         channel_axis = -1
 
         max_channel = self.Input.meta.getTaggedShape()["c"]
-        selected_channels: Tuple[int] = self.SelectedChannels.value
+        selected_channels: Tuple[int] = (
+            self.SelectedChannels.value if self.SelectedChannels.ready() else tuple(range(max_channel))
+        )
         if len(selected_channels) == 0 or any(x >= max_channel for x in selected_channels):
             self.Output.meta.NOTREADY = True
             return
@@ -836,8 +842,13 @@ class OpMultiChannelSelector(Operator):
             max_blockshape[channel_axis] = len(selected_channels)
             self.Output.meta.max_blockshape = tuple(max_blockshape)
 
+        self._selected_channels = selected_channels
+
+        channel_names = self.Input.meta.channel_names or [f"Ch. {i}" for i in range(max_channel)]
+        self.Output.meta.channel_names = [channel_names[s] for s in selected_channels]
+
     def execute(self, slot, subindex, roi, result):
-        channel_indexes: Tuple[int] = self.SelectedChannels.value
+        channel_indexes: Tuple[int] = self._selected_channels[roi.start[-1] : roi.stop[-1]]
 
         # make sure to request the minimum (consecutive) channels
         input_roi = roi.copy()

@@ -29,6 +29,7 @@ import numpy.typing as npt
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
     SerialBlockSlot,
+    SerialListSlot,
     SerialObjectFeatureNamesSlot,
     SerialRelabeledDataSlot,
     SerialSlot,
@@ -36,14 +37,31 @@ from ilastik.applets.base.appletSerializer import (
 )
 from ilastik.plugins.manager import PluginNotFound, plugin_manager
 from ilastik.utility.commandLineProcessing import convertStringToList
-from lazyflow.slot import InputSlot, OutputSlot
-
+from lazyflow.slot import InputSlot, OutputSlot, Slot
 
 logger = logging.getLogger(__name__)
 
 
 class UnsatisfyableObjectFeaturesError(BaseException):
     pass
+
+
+class SerialSelectedChannelsSlot(SerialListSlot):
+    """Absent in legacy projects means all channels.
+
+    new for 1.5.0
+    """
+
+    def __init__(self, slot: Slot):
+        super().__init__(slot, transform=int, iterable=tuple, selfdepends=False)
+        slot.notifyUnready(self.setDirty)
+
+    def deserialize(self, group):
+        if self.name not in group:
+            self.inslot.disconnect()
+            self.dirty = False
+            return
+        super().deserialize(group)
 
 
 class SerialObjectFeaturesSlot(SerialSlot):
@@ -128,6 +146,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                 compression_level=1,
             ),
             SerialObjectFeatureNamesSlot(operator.Features),
+            SerialSelectedChannelsSlot(operator.SelectedChannels),
             SerialObjectFeaturesSlot(
                 operator.BlockwiseRegionFeatures,
                 operator.RegionFeaturesCacheInput,
@@ -183,6 +202,7 @@ class ObjectExtractionFromLabelsSerializer(AppletSerializer):
                 selfdepends=False,
             ),
             SerialObjectFeatureNamesSlot(operator.Features),
+            SerialSelectedChannelsSlot(operator.SelectedChannels),
             SerialObjectFeaturesSlot(
                 operator.BlockwiseRegionFeatures,
                 operator.RegionFeaturesCacheInput,

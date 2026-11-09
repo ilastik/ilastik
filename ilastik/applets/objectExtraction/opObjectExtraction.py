@@ -22,22 +22,23 @@
 from abc import ABC, abstractmethod
 from copy import copy, deepcopy
 import collections
-from collections.abc import Iterable
 from functools import partial
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterable
 
 import numpy
 import vigra
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.opLabelBase import OpLabelBase
 from lazyflow.operators.opRelabelConsecutive import OpRelabelConsecutive
-from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
+from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache, OpReorderAxes
+from lazyflow.operators.generic import OpMultiChannelSelector
 from itertools import groupby, count
 
 import logging
@@ -45,7 +46,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ilastik.plugins.manager import plugin_manager
-
+from ilastik.plugins.types import PartialFeatureDict, PluginNotFound
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -55,6 +56,56 @@ default_features = {"Coord<Minimum>": {}, "Coord<Maximum>": {}, "RegionCenter": 
 
 # to distinguish them, they go in their own category with this name
 default_features_key = "Default features"
+
+
+def available_object_features(raw_meta: MetaDict, plugin_names: Optional[Iterable[str]] = None):
+    """Query available features from metadata."""
+    shape = raw_meta.getTaggedShape()
+    axes = "xyz" if shape.get("z", 1) > 1 else "xy"
+
+    # fake arrays to query for available features
+    label_shape = tuple(min(shape[axis], 2) for axis in axes)
+    channels = shape.get("c", 1)
+    image_shape = (*label_shape, channels) if channels > 1 else label_shape
+    image_axes = axes + "c" if channels > 1 else axes
+    image = vigra.taggedView(numpy.zeros(image_shape, dtype=numpy.float32), image_axes)
+    labels = vigra.taggedView(numpy.zeros(label_shape, dtype=numpy.uint32), axes)
+
+    if plugin_names is None:
+        plugins = plugin_manager.get_object_feature_plugins()
+    else:
+        plugins = [plugin_manager.get_object_feature_plugin_by_name(name) for name in plugin_names]
+
+    features: dict[str, PartialFeatureDict] = {}
+    for plugin in plugins:
+        available = plugin.availableFeatures(image, labels)
+        if available:
+            features[plugin.plugin_info.name] = available
+    return features, len(axes)
+
+
+def format_feature_selection_error(raw_meta: MetaDict, selected_features: dict[str, str]) -> str:
+    selected_features = {name: features for name, features in selected_features.items() if features}
+    if not selected_features:
+        return ""
+    try:
+        available, _ = available_object_features(raw_meta, selected_features)
+    except PluginNotFound as error:
+        return f"An object feature plugin is unavailable: {error}"
+
+    missing: list[str] = []
+    for plugin, features in selected_features.items():
+        for feature in sorted(set(features) - set(available.get(plugin, {}))):
+            missing.append(f"{plugin}: {feature}")
+
+    if not missing:
+        return ""
+    channels = raw_meta.getTaggedShape().get("c", 1)
+    return (
+        f"Selected object features are unavailable for the current input ({channels} input channel(s)): "
+        + ", ".join(missing)
+        + ". Change input channel configuration or change the selected object features."
+    )
 
 
 def max_margin(d, default=(0, 0, 0)):
@@ -127,6 +178,21 @@ class OpCachedRegionFeatures(Operator):
 
     Output = OutputSlot()
     CleanBlocks = OutputSlot()
+
+    def get_cached_feature_count(self):
+        """Count feature values in a time slice reported clean by the cache."""
+        if not self.CleanBlocks.ready():
+            return None
+        clean_blocks = self.CleanBlocks.value
+        if not clean_blocks:
+            return None
+        features = self.Output[clean_blocks[0]].wait()[0]
+        return sum(
+            feature.shape[1]
+            for plugin, plugin_features in features.items()
+            if plugin != default_features_key
+            for feature in plugin_features.values()
+        )
 
     # Schematic:
     #
@@ -317,6 +383,7 @@ class OpObjectExtractionBase(Operator, ABC):
     # Bypass cache (for headless mode)
     BypassModeEnabled = InputSlot(value=False)
 
+    SelectedChannels = InputSlot(optional=True)
     # which features to compute.
     # nested dictionary with format:
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
@@ -341,6 +408,7 @@ class OpObjectExtractionBase(Operator, ABC):
     LabelImageCacheInput = InputSlot(optional=True)
     RelabelCacheInput = InputSlot(optional=True)
     RelabelCacheOutput = OutputSlot()
+    SelectedChannelsImage = OutputSlot()
 
     RegionFeaturesCacheInput = InputSlot(optional=True)
     RegionFeaturesCleanBlocks = OutputSlot()
@@ -362,10 +430,17 @@ class OpObjectExtractionBase(Operator, ABC):
 
         self._opLabelVolume = self._create_label_volume_op()
 
+        self._opReorderChannels = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=self.RawImage)
+        self._opChannelSelector = OpMultiChannelSelector(parent=self)
+        self._opChannelSelector.Input.connect(self._opReorderChannels.Output)
+        self._opChannelSelector.SelectedChannels.connect(self.SelectedChannels)
+        self._opReorderSelectedChannels = OpReorderAxes(parent=self)
+        self._opReorderSelectedChannels.Input.connect(self._opChannelSelector.Output)
+
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
-        self._opRegFeats.RawImage.connect(self.RawImage)
+        self._opRegFeats.RawImage.connect(self.SelectedChannelsImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
         self._opRegFeats.Atlas.connect(self.Atlas)  # move into constructor?
@@ -388,15 +463,24 @@ class OpObjectExtractionBase(Operator, ABC):
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
+        # Resetting this optional input to "all channels" does not emit dirty itself.
+        self.SelectedChannels.notifyUnready(lambda _: self.SelectedChannelsImage.setDirty(slice(None)))
 
     def setupOutputs(self):
         self._checkConstraints()
+        self._opReorderSelectedChannels.AxisOrder.setValue(self.RawImage.meta.getAxisKeys())
+        self.SelectedChannelsImage.connect(self._opReorderSelectedChannels.Output)
 
         taggedShape = self.RawImage.meta.getTaggedShape()
         for k in list(taggedShape.keys()):
             if k == "t" or k == "c":
                 taggedShape[k] = 1
         self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
+
+    def get_feature_selection_error(self) -> str:
+        if not self.SelectedChannelsImage.ready() or not self.Features.ready():
+            return ""
+        return format_feature_selection_error(self.SelectedChannelsImage.meta, self.Features.value)
 
     def _checkConstraints(self, *_):
         if not any((self.RawImage.ready(), self.SegmentationImage.ready(), self.Atlas.ready())):

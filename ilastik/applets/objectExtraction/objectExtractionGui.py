@@ -32,25 +32,21 @@ from copy import deepcopy
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from functools import partial
 from itertools import chain
-from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
+from ilastik.applets.objectExtraction.opObjectExtraction import available_object_features, max_margin
 
 from ilastik.plugins.manager import plugin_manager
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
+from ilastik.widgets.channelSelectionWidget import ChannelSelectionWidget
 
 from volumina.api import createDataSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
 import volumina.colortables as colortables
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
-import vigra
-import numpy
 
 from qtpy.QtWidgets import QDialog, QFileDialog
 
 import pickle as pickle
-import threading
 
 import logging
 
@@ -189,12 +185,21 @@ class FeatureSelectionDialog(QDialog):
                     item.group_name = parameters["group"]
                 else:
                     item = QTreeWidgetItem(parent)
+
                 if "displaytext" in parameters:
                     itemtext = parameters["displaytext"]
                 else:
                     itemtext = name
+
+                item._is_unavailable = parameters.get("unavailable", False)
+
                 item.setText(0, itemtext)
                 item.feature_id = name
+                if parameters.get("unavailable", False):
+                    item.setForeground(0, QColor(Qt.red))
+                    font = item.font(0)
+                    font.setBold(True)
+                    item.setFont(0, font)
 
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 if "tooltip" in parameters:
@@ -219,12 +224,14 @@ class FeatureSelectionDialog(QDialog):
         # self.ui.treeWidget.resizeColumnToContents(1)
 
     @staticmethod
-    def recursiveCheckChildren(twitem, val, exclude_location=False):
+    def recursiveCheckChildren(
+        twitem, val: Qt.CheckState, exclude_location: bool = False, uncheck_unavailable: bool = False
+    ):
         # check or uncheck all children of an item at the lowest level of the hierarchy
         for child_id in range(twitem.childCount()):
             child = twitem.child(child_id)
             if child.childCount() > 0:
-                FeatureSelectionDialog.recursiveCheckChildren(child, val, exclude_location)
+                FeatureSelectionDialog.recursiveCheckChildren(child, val, exclude_location, uncheck_unavailable)
             else:
                 if not exclude_location:
                     child.setCheckState(0, val)
@@ -232,6 +239,9 @@ class FeatureSelectionDialog(QDialog):
                     if getattr(child, "group_name", ""):
                         if child.group_name != "Location":
                             child.setCheckState(0, val)
+
+                if uncheck_unavailable and child._is_unavailable:
+                    child.setCheckState(0, Qt.Unchecked)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -408,7 +418,9 @@ class FeatureSelectionDialog(QDialog):
                 continue
 
             plugin.setCheckState(0, Qt.Checked)
-            FeatureSelectionDialog.recursiveCheckChildren(plugin, Qt.Checked, exclude_location=True)
+            FeatureSelectionDialog.recursiveCheckChildren(
+                plugin, Qt.Checked, exclude_location=True, uncheck_unavailable=True
+            )
 
             self.countChecked[pluginName] = self.countAll[pluginName]
             self.updateToolTip(plugin)
@@ -423,7 +435,7 @@ class FeatureSelectionDialog(QDialog):
         for plugin_id in range(root.childCount()):
             plugin = root.child(plugin_id)
             plugin.setCheckState(0, val)
-            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, exclude_location=False)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, exclude_location=False, uncheck_unavailable=True)
 
             pluginName = str(plugin.text(0))
             if val == Qt.Checked:
@@ -444,7 +456,7 @@ class FeatureSelectionDialog(QDialog):
 
 class ObjectExtractionGui(LayerViewerGui):
     def stopAndCleanUp(self):
-        # Unsubscribe to all signals
+        self.channelSelectionWidget.cleanUp()
         for fn in self.__cleanup_fns:
             fn()
 
@@ -452,7 +464,6 @@ class ObjectExtractionGui(LayerViewerGui):
 
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
-        self._lock = threading.Lock()
         super(ObjectExtractionGui, self).__init__(*args, **kwargs)
 
     def setupLayers(self):
@@ -549,29 +560,74 @@ class ObjectExtractionGui(LayerViewerGui):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir + "/drawer.ui")
+
+        self.channelSelectionWidget = ChannelSelectionWidget(
+            self.topLevelOperatorView.RawImage, self.topLevelOperatorView.SelectedChannels, self._drawer
+        )
+        self._drawer.verticalLayout_5.insertWidget(0, self.channelSelectionWidget)
+
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportButton.setVisible(False)
 
         self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
 
-        slot = self.topLevelOperatorView.Features
-        if slot.ready():
-            selectedFeatures = self.topLevelOperatorView.Features([]).wait()
-        else:
-            selectedFeatures = None
-
-        nfeatures = 0
-        if selectedFeatures is not None:
-            for plugin_features in selectedFeatures.values():
-                nfeatures += len(plugin_features)
-
-        self._drawer.featuresSelected.setText(
-            "{} features computed, \nsome may have multiple channels".format(nfeatures)
-        )
-
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
+        for slot in (
+            self.topLevelOperatorView.Features,
+            self.topLevelOperatorView.SelectedChannelsImage,
+        ):
+            self.__cleanup_fns.append(slot.notifyDirty(self._handleFeatureInputsChanged))
+            self.__cleanup_fns.append(slot.notifyReady(self._handleFeatureInputsChanged))
+            self.__cleanup_fns.append(slot.notifyUnready(self._handleFeatureInputsChanged))
+            self.__cleanup_fns.append(slot.notifyMetaChanged(self._handleFeatureInputsChanged))
+        self.__cleanup_fns.append(
+            self.topLevelOperatorView.SelectedChannels.notifyDirty(self._handleSelectedChannelsChanged)
+        )
+        self.__cleanup_fns.append(
+            self.topLevelOperatorView.SelectedChannels.notifyUnready(self._handleSelectedChannelsChanged)
+        )
+        self._updateFeatureSummary()
+
+    def showEvent(self, event):
+        # Other applets may have computed features while this viewer was hidden.
+        self._updateFeatureSummary()
+        super().showEvent(event)
+
+    @threadRouted
+    def _handleFeatureInputsChanged(self, *_):
+        self._updateFeatureSummary(show_total=False)
+        self.applet.appletStateUpdateRequested()
+
+    def _updateFeatureSummary(self, show_total=True):
+        if self._stopped:
+            return
+        op = self.topLevelOperatorView
+        n_features = sum(len(features) for features in op.Features.value.values()) if op.Features.ready() else 0
+        n_channels = 0
+        if op.RawImage.ready():
+            if op.SelectedChannels.ready():
+                n_channels = len(op.SelectedChannels.value)
+            else:
+                n_channels = op.RawImage.meta.getTaggedShape().get("c", 1)
+
+        text = f"{n_features} feature(s) on {n_channels} channel(s)"
+        error = op.get_feature_selection_error()
+        if error:
+            text += f"\n{error}"
+        elif show_total and op.SelectedChannelsImage.ready():
+            total = op._opRegFeats.get_cached_feature_count()
+            if total is not None:
+                text += f"\n{total} feature value(s) in total"
+        self._drawer.featuresSelected.setTextFormat(Qt.PlainText)
+        self._drawer.featuresSelected.setWordWrap(True)
+        self._drawer.featuresSelected.setText(text)
+
+    @threadRouted
+    def _handleSelectedChannelsChanged(self, *_):
+        self._updateFeatureSummary(show_total=False)
+        self.applet.appletStateUpdateRequested()
 
     def _selectFeaturesButtonPressed(self):
         mainOperator = self.topLevelOperatorView
@@ -587,6 +643,10 @@ class ObjectExtractionGui(LayerViewerGui):
             mexBox.exec_()
             return
 
+        if not mainOperator.SelectedChannelsImage.ready():
+            QMessageBox.information(self, "Input channels", "Please select at least one raw data channel.")
+            return
+
         slot = mainOperator.Features
         if slot.ready():
             selectedFeatures = mainOperator.Features([]).wait()
@@ -594,6 +654,16 @@ class ObjectExtractionGui(LayerViewerGui):
             selectedFeatures = None
 
         featureDict, ndim = self._populate_feature_dict(mainOperator)
+
+        # Keep unavailable choices so the user can explicitly remove them or select more channels
+        for plugin, features in (selectedFeatures or {}).items():
+            for name, parameters in features.items():
+                if name not in featureDict.get(plugin, {}):
+                    unavailable = deepcopy(parameters)
+                    unavailable["unavailable"] = True
+                    unavailable["displaytext"] = f"{name} (unavailable for current input)"
+                    unavailable["tooltip"] = "Select/Deselect additional input channels or uncheck this feature"
+                    featureDict.setdefault(plugin, {})[name] = unavailable
         dlg = FeatureSelectionDialog(featureDict=featureDict, selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
 
@@ -602,42 +672,7 @@ class ObjectExtractionGui(LayerViewerGui):
             self._calculateFeatures()
 
     def _populate_feature_dict(self, mainOperator):
-        featureDict = {}
-        plugins = plugin_manager.get_object_feature_plugins()
-        taggedShape = mainOperator.RawImage.meta.getTaggedShape()
-        fakeimgshp = [taggedShape["x"], taggedShape["y"]]
-        fakelabelsshp = [taggedShape["x"], taggedShape["y"]]
-        ndim = 3
-        if "z" in taggedShape and taggedShape["z"] > 1:
-            fakeimgshp.append(taggedShape["z"])
-            fakelabelsshp.append(taggedShape["z"])
-            ndim = 3
-        else:
-            ndim = 2
-        if "c" in taggedShape and taggedShape["c"] > 1:
-            fakeimgshp.append(taggedShape["c"])
-
-        fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
-        fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
-
-        if ndim == 3:
-            fakelabels = vigra.taggedView(fakelabels, "xyz")
-            if len(fakeimgshp) == 4:
-                fakeimg = vigra.taggedView(fakeimg, "xyzc")
-            else:
-                fakeimg = vigra.taggedView(fakeimg, "xyz")
-        if ndim == 2:
-            fakelabels = vigra.taggedView(fakelabels, "xy")
-            if len(fakeimgshp) == 3:
-                fakeimg = vigra.taggedView(fakeimg, "xyc")
-            else:
-                fakeimg = vigra.taggedView(fakeimg, "xy")
-
-        for plugin_object in plugins:
-            availableFeatures = plugin_object.availableFeatures(fakeimg, fakelabels)
-            if len(availableFeatures) > 0:
-                featureDict[plugin_object.plugin_info.name] = availableFeatures
-
+        featureDict, ndim = available_object_features(mainOperator.SelectedChannelsImage.meta)
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
         all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
@@ -653,51 +688,32 @@ class ObjectExtractionGui(LayerViewerGui):
 
     def _calculateFeatures(self, interactive=True):
         mainOperator = self.topLevelOperatorView
+        error = mainOperator.get_feature_selection_error()
+        if error:
+            self._updateFeatureSummary(show_total=False)
+            QMessageBox.information(self, "Object Feature Selection", error)
+            return
         mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
         current_t = self.editor.posModel.time
 
-        def _handle_all_finished(*args):
-            self._lock.acquire()
-            self.applet.progressSignal(100)
-            self.topLevelOperatorView._opRegFeats.fixed = True
-            feats = self.topLevelOperatorView.RegionFeatures[0].wait()
-            nfeatures = 0
-            nchannels = 0
-
-            try:
-                for pname, pfeats in feats[0].items():
-                    if pname != default_features_key:
-                        for featname, feat in pfeats.items():
-                            nchannels += feat.shape[1]
-                            nfeatures += 1
-                if interactive:
-                    self._drawer.featuresSelected.setText(
-                        "{} features computed, {} channels in total".format(nfeatures, nchannels)
-                    )
-                logger.info("Object Extraction: done.")
-                success = True
-            except AttributeError:
-                if interactive:
-                    self._drawer.featuresSelected.setText(
-                        "Feature computation failed (most likely due to memory issues)"
-                    )
-                logger.error("Object Extraction: failed.")
-                success = False
-
-            self.applet.appletStateUpdateRequested()
-            self._lock.release()
-
         self.applet.progressSignal(0)
         self.applet.progressSignal(-1)
 
-        reqs = []
-        self.already_done = 0
         req = mainOperator.RegionFeatures([current_t])
-        req.submit()
         req.notify_failed(self.handleFeatureComputationFailure)
-        req.notify_finished(_handle_all_finished)
-        reqs.append(req)
+        req.notify_finished(partial(self._handleFeatureComputationFinished, interactive))
+        req.submit()
+
+    @threadRouted
+    def _handleFeatureComputationFinished(self, interactive, *_):
+        if self._stopped:
+            return
+        self.applet.progressSignal(100)
+        if interactive:
+            self._updateFeatureSummary()
+        logger.info("Object Extraction: done.")
+        self.applet.appletStateUpdateRequested()
 
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):
@@ -720,6 +736,7 @@ class ObjectExtractionGui(LayerViewerGui):
         if len(fname) > 0:  # not cancelled
             with open(fname, "w") as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f, 0)
+            self._updateFeatureSummary()
 
         logger.debug("Exported object features to file '{}'".format(fname))
 
