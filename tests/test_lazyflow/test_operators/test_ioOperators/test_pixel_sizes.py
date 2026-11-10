@@ -757,7 +757,13 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     ome_spec_v0_4 = {
         "multiscales": [
             {
-                "axes": [{"name": "t"}, {"name": "c"}, {"name": "z"}, {"name": "y"}, {"name": "x"}],
+                "axes": [
+                    {"name": "t"},
+                    {"name": "c"},
+                    {"name": "z"},
+                    {"name": "y", "type": "space"},
+                    {"name": "x", "type": "space"},
+                ],
                 "datasets": [
                     {
                         "path": "boop",

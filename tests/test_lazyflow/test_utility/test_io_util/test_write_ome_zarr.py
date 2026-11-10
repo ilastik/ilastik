@@ -493,8 +493,8 @@ def test_transformations_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper)
 
 def test_port_ome_zarr_metadata_multi_scale_export(tmp_path, tiny_5d_vigra_array_piper):
     """
-    See test above, but with OME-Zarr metadata on the input, translations from the source
-    must be added to translation from the export offset.
+    See test above, but with the source scale having its own translation. This must not be combined with the
+    export offset's crop translation. That one should still be written separately, as a multiscale-global translation.
     """
     export_path = tmp_path / "test_ome_zarr_to_multi.zarr"
     source_op = tiny_5d_vigra_array_piper
@@ -749,9 +749,9 @@ def test_generate_default_target_scales(shape, expected_shapes):
             multiscale_from_shapes(
                 dict(
                     [
-                        ("0", tagged_shape("cyxt", (3, 25, 25, 32))),
-                        ("source_scale", tagged_shape("cyxt", (3, 25, 25, 11))),
-                        ("2", tagged_shape("cyxt", (3, 25, 25, 3))),
+                        ("0", tagged_shape("tcyx", (32, 3, 25, 25))),
+                        ("source_scale", tagged_shape("tcyx", (11, 3, 25, 25))),
+                        ("2", tagged_shape("tcyx", (3, 3, 25, 25))),
                     ]
                 )
             ),
