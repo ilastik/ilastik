@@ -747,9 +747,9 @@ def test_generate_default_target_scales(shape, expected_shapes):
             clearscale.Multiscale.from_shapes(
                 dict(
                     [
-                        ("0", tagged_shape("cyxt", (3, 25, 25, 32))),
-                        ("source_scale", tagged_shape("cyxt", (3, 25, 25, 11))),
-                        ("2", tagged_shape("cyxt", (3, 25, 25, 3))),
+                        ("0", tagged_shape("tcyx", (32, 3, 25, 25))),
+                        ("source_scale", tagged_shape("tcyx", (11, 3, 25, 25))),
+                        ("2", tagged_shape("tcyx", (3, 3, 25, 25))),
                     ]
                 )
             ),

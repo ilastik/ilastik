@@ -1120,8 +1120,8 @@ class TestOpDataSelection_OMEZarr:
         dataset_shape = [2, 3, 4, 100, 100]  # tczyx for good measure
         chunk_size = [2, 3, 3, 64, 64]
         axes_json = [
-            {"type": "space", "name": "t"},
-            {"type": "space", "name": "c"},
+            {"type": "time", "name": "t"},
+            {"type": "channel", "name": "c"},
             {"type": "space", "name": "z"},
             {"type": "space", "name": "y"},
             {"type": "space", "name": "x"},
@@ -1259,7 +1259,7 @@ class TestOpDataSelection_DatasetInfo:
             ".zattrs": {
                 "multiscales": [
                     {
-                        "axes": [{"name": "x"}, {"name": "y"}],
+                        "axes": [{"name": "x", "type": "space"}, {"name": "y", "type": "space"}],
                         "datasets": [
                             {"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1.0, 1.0]}]}
                         ],
@@ -1297,10 +1297,10 @@ class TestOpDataSelection_DatasetInfo:
         # request metadata from the server during instantiation
         mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL, project_file=mock_project)
-        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH, "works with precomputed"
 
         dataset_info2 = MultiscaleUrlDatasetInfo(url="http://localhost:8000/some.zarr", project_file=mock_project)
-        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH, "works with ome-zarr"
 
         # When using a "file:" URI, the default export path should be the dataset's parent directory
         ome_zarr_path = data_path / "dataset.zarr"
