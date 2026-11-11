@@ -5,8 +5,8 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Dict, List, Tuple, Union
 from unittest import mock
-from unittest.mock import ANY
 
+import clearscale
 import h5py
 import numpy as np
 import pytest
@@ -27,7 +27,7 @@ from lazyflow.operators.ioOperators import (
     OpStreamingH5N5Reader,
 )
 from lazyflow.slot import Slot
-from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr, ShapesByScaleKey
+from lazyflow.utility.io_util.write_ome_zarr import write_ome_zarr
 from ..test_ioOperators.testOpStreamingH5N5Reader import h5n5_file, data
 
 
@@ -707,8 +707,11 @@ def test_read_ome_zarr_v0_3(graph):
 
 
 def test_read_ome_zarr_v0_4(graph):
+    # Resolution 0 for channel seems like something that might happen in the wild
     pyramid_scale = {"t": 0.1, "c": 0, "z": 1, "y": 1, "x": 1}
     dataset_scale = {"t": 1.0, "c": 0, "z": 2.0, "y": 0.3, "x": 4.0}
+    # c normalized to 1 internally; t and zyx scales merged
+    expected_axistag_resolution = {"t": 0.1, "c": 1, "z": 2.0, "y": 0.3, "x": 4.0}
     units = {"t": "sec", "c": "", "z": "mm", "y": "beep", "x": "metres"}
     ome_spec_v0_4 = {
         "multiscales": [
@@ -746,8 +749,7 @@ def test_read_ome_zarr_v0_4(graph):
     assert reader.Output.meta.axis_units == units
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
-        expected_resolution = pyramid_scale[tag.key] * dataset_scale[tag.key]
-        assert tag.resolution == expected_resolution
+        assert tag.resolution == expected_axistag_resolution[tag.key]
 
 
 def test_read_ome_zarr_v0_4_no_units(graph):
@@ -755,7 +757,13 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     ome_spec_v0_4 = {
         "multiscales": [
             {
-                "axes": [{"name": "t"}, {"name": "c"}, {"name": "z"}, {"name": "y"}, {"name": "x"}],
+                "axes": [
+                    {"name": "t"},
+                    {"name": "c"},
+                    {"name": "z"},
+                    {"name": "y", "type": "space"},
+                    {"name": "x", "type": "space"},
+                ],
                 "datasets": [
                     {
                         "path": "boop",
@@ -769,6 +777,10 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     }
     array_mock = mock.Mock()
     array_mock.shape = (3, 2, 11, 10, 9)
+    expected_axistag_resolution = dataset_scale.copy()
+    # scale[c]=0 is normalised to pixel size 1.0: 0 is nonsense (a genuine 0-scale would collapse the axis), strictly
+    # speaking even invalid according to spec ("MUST [default] to 1.0 if there is no downsampling along the axis.")
+    expected_axistag_resolution["c"] = 1.0
 
     reader = OpOMEZarrMultiscaleReader(graph=graph)
     with patch_ome_zarr(ome_spec_v0_4, "file:///noop", array_mock):
@@ -780,7 +792,7 @@ def test_read_ome_zarr_v0_4_no_units(graph):
     assert reader.Output.meta.axis_units == {a: "" for a in dataset_scale}
     assert reader.Output.meta.getAxisKeys() == list(dataset_scale.keys())
     for tag in reader.Output.meta.axistags:
-        assert tag.resolution == dataset_scale[tag.key]
+        assert tag.resolution == expected_axistag_resolution[tag.key]
 
 
 def test_write_ome_zarr_single_scale(graph, tmp_path):
@@ -804,11 +816,9 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
         {"name": "y", "type": "space", "unit": "nm"},
         {"name": "x", "type": "space", "unit": "mm"},
     ]
-    # Dataset scale is mandatory, but should be noop here. In single-scale export from a single-scale source,
-    # pixel size should be written on multiscale-level. This isn't a spec requirement, but a generalisation of the
-    # convention of writing scale for the t-axis into the multiscale-level transforms.
-    expected_multiscale_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
-    expected_dataset_transform = [{"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0, 1.0]}]
+    # Pixel size is dataset scale:
+    # "They MUST contain exactly one scale transformation that specifies the pixel size in physical units or time duration."
+    expected_dataset_transform = [{"type": "scale", "scale": [0.4, 8.99991, 5.0, 0.3, 6.4]}]  # tczyx
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None)
 
@@ -817,8 +827,7 @@ def test_write_ome_zarr_single_scale(graph, tmp_path):
     m = group.attrs["multiscales"][0]
     assert "axes" in m
     assert m["axes"] == expected_axes
-    assert "coordinateTransformations" in m
-    assert m["coordinateTransformations"] == expected_multiscale_transform
+    assert "coordinateTransformations" not in m
     assert "datasets" in m and "path" in m["datasets"][0]
     assert len(m["datasets"]) == 1
     assert m["datasets"][0]["coordinateTransformations"] == expected_dataset_transform
@@ -834,7 +843,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     progress = mock.Mock()
     target_shape_up = OrderedDict(zip("tczyx", (6, 2, 16, 15, 13)))  # ome-zarr standard
     target_shape_down = OrderedDict(zip("tczyx", (6, 2, 3, 2, 3)))
-    target_scales: ShapesByScaleKey = OrderedDict([("upscale", target_shape_up), ("downscale", target_shape_down)])
+    target_scales = clearscale.BlueprintShapes([("upscale", target_shape_up), ("downscale", target_shape_down)])
 
     write_ome_zarr(str(export_path), op_data.Output, progress, None, target_scales)
 
@@ -844,7 +853,21 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
     assert "axis_units" in reader.Output.meta
     assert reader.Output.meta.axis_units == dict(zip(axes, units))
     assert reader.Output.meta.getAxisKeys() == list("tczyx")
-    assert reader.Output.meta.scales == target_scales
+    assert reader.Output.meta.scales == clearscale.BlueprintShapes(target_scales).apply_to_scale(
+        clearscale.Scale(
+            shape=op_data.Output.meta.getTaggedShape(),
+            pixel_size=clearscale.PixelSize.from_vigra(op_data.Output.meta.axistags),
+            unit=clearscale.Unit(op_data.Output.meta.axis_units),
+            ome_zarr_axes={
+                "t": clearscale.ome_zarr.Axis(type="time"),
+                "z": clearscale.ome_zarr.Axis(type="space"),
+                "y": clearscale.ome_zarr.Axis(type="space"),
+                "x": clearscale.ome_zarr.Axis(type="space"),
+                "c": clearscale.ome_zarr.Axis(type="channel"),
+            },
+        ).with_axes("tczyx"),
+        translating="first_value_decimation",
+    )
     for tag in reader.Output.meta.axistags:
         scaling = source_shape[tag.key] / target_shape_down[tag.key]
         expected_resolution = scaling * resolutions[tag.key]
@@ -861,7 +884,7 @@ def test_write_read_roundtrip_ome_zarr(graph, tmp_path):
 
 def test_read_precomputed(graph):
     resolution = [801, 802, 70]
-    tagged_resolution = {"c": 0, "z": 70, "y": 802, "x": 801}
+    expected_resolution = {"c": 1, "z": 70, "y": 802, "x": 801}
     precomputed_info = {
         "@type": "neuroglancer_multiscale_volume",
         "type": "image",
@@ -889,4 +912,4 @@ def test_read_precomputed(graph):
     assert reader.Output.meta.axis_units == {"c": "", "z": "nm", "y": "nm", "x": "nm"}
     assert reader.Output.meta.getAxisKeys() == ["c", "z", "y", "x"]
     for tag in reader.Output.meta.axistags:
-        assert tag.resolution == tagged_resolution[tag.key]
+        assert tag.resolution == expected_resolution[tag.key]

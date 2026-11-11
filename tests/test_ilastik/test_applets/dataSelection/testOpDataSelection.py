@@ -21,11 +21,12 @@
 import json
 import os
 import shutil
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from typing import Tuple
 from unittest import mock
 from unittest.mock import Mock
 
+import clearscale
 import numpy
 import requests
 import vigra
@@ -884,12 +885,7 @@ class TestOpDataSelection_PrecomputedChunks:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == OrderedDict(
-            [
-                ("800_800_70", OrderedDict([("c", 1), ("z", 1), ("y", 20), ("x", 24)])),
-                ("1600_1600_70", OrderedDict([("c", 1), ("z", 1), ("y", 10), ("x", 12)])),
-            ]
-        )
+        assert op.Image.meta.scales == clearscale.Multiscale.from_precomputed(self.INFO_JSON)
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
         scale_keys = list(op.Image.meta.scales.keys())
@@ -1037,11 +1033,9 @@ class TestOpDataSelection_OMEZarr:
         loaded_scale0 = op.Image[:].wait()
         numpy.testing.assert_allclose(loaded_scale0, self.IMAGE_SCALED.reshape((1, 1, 1, 10, 12)))
 
-        assert op.Image.meta.scales == OrderedDict(
-            [
-                ("s0", OrderedDict([("z", 1), ("y", 20), ("x", 24)])),
-                ("s1", OrderedDict([("z", 1), ("y", 10), ("x", 12)])),
-            ]
+        assert op.Image.meta.scales == clearscale.Multiscale.from_ome_zarr(
+            self.ZATTRS["multiscales"][0],
+            shape_source={"s0": self.SHAPE_ORIGINAL_ZYX, "s1": self.SHAPE_SCALED_ZYX},
         )
 
         # Switch to original unscaled resolution (first in the list, see multiscaleStore.multiscale)
@@ -1126,8 +1120,8 @@ class TestOpDataSelection_OMEZarr:
         dataset_shape = [2, 3, 4, 100, 100]  # tczyx for good measure
         chunk_size = [2, 3, 3, 64, 64]
         axes_json = [
-            {"type": "space", "name": "t"},
-            {"type": "space", "name": "c"},
+            {"type": "time", "name": "t"},
+            {"type": "channel", "name": "c"},
             {"type": "space", "name": "z"},
             {"type": "space", "name": "y"},
             {"type": "space", "name": "x"},
@@ -1264,7 +1258,13 @@ class TestOpDataSelection_DatasetInfo:
         responses = {
             ".zattrs": {
                 "multiscales": [
-                    {"axes": [{"name": "x"}, {"name": "y"}], "datasets": [{"path": "s0"}], "version": "0.4"}
+                    {
+                        "axes": [{"name": "x", "type": "space"}, {"name": "y", "type": "space"}],
+                        "datasets": [
+                            {"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1.0, 1.0]}]}
+                        ],
+                        "version": "0.4",
+                    }
                 ]
             },
             "s0/.zarray": {
@@ -1297,10 +1297,10 @@ class TestOpDataSelection_DatasetInfo:
         # request metadata from the server during instantiation
         mock_precomputed_requests(monkeypatch, self.MOCK_PRECOMPUTED_URL, self.MOCK_PRECOMPUTED_INFO, {})
         dataset_info = MultiscaleUrlDatasetInfo(url=self.MOCK_PRECOMPUTED_URL, project_file=mock_project)
-        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+        assert dataset_info.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH, "works with precomputed"
 
         dataset_info2 = MultiscaleUrlDatasetInfo(url="http://localhost:8000/some.zarr", project_file=mock_project)
-        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH
+        assert dataset_info2.default_output_dir == data_path / self.MOCK_PROJECT_SUBPATH, "works with ome-zarr"
 
         # When using a "file:" URI, the default export path should be the dataset's parent directory
         ome_zarr_path = data_path / "dataset.zarr"

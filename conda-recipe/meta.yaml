@@ -79,6 +79,8 @@ outputs:
         - zarr 2.*
         # Third-party object feature plugins
         - sphericaltexture_plugin 0.1.0
+        - pip:
+            - clearscale==0.9.0rc1
       run_constrained:
         - tiktorch 26.5.0
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079

@@ -23,6 +23,7 @@ import contextlib
 import os
 from collections import namedtuple
 from functools import partial
+from typing import Mapping
 
 import numpy
 import vigra
@@ -78,7 +79,7 @@ class OpExportSlot(Operator):
     )  # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
 
     ExportPath = OutputSlot()
-    TargetScales = OutputSlot()  # Target scales for multi-scale OME-Zarr export
+    TargetScales = OutputSlot()  # Target shapes for multi-scale OME-Zarr export. {scale_key : {axis_key : int}}
     FormatSelectionErrorMsg = OutputSlot()
 
     # Vigra supports some file formats that Ilastik doesn't handle, so we exclude "xv" and "exr" extensions.
@@ -192,7 +193,7 @@ class OpExportSlot(Operator):
         formatted_path = format_known_keys(path_format, optional_replacements, strict=False)
         return formatted_path
 
-    def _get_target_scales(self):
+    def _get_target_scales(self) -> Mapping[str, Mapping[str, int]]:
         input_shape = self.Input.meta.getTaggedShape()
         dtype = self.Input.meta.dtype
         if self.Input.meta.get("scales"):  # Input is multiscale
