@@ -52,7 +52,7 @@ dependencies:
   - s3fs >=2022.8.2
   - pip
   - pip:
-    - git+https://github.com/ilastik/clearscale@ilastik-review2
+    - clearscale==0.9.0rc1
 
   # Deep learning dependencies (neural net workflow, trainable domain adaptation)
   # can be changed to request gpu versions by uncommenting the following line:

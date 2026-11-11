@@ -21,7 +21,6 @@ outputs:
       script_env:
         - SETUPTOOLS_SCM_PRETEND_VERSION={{version}}
       script:
-        - {{PYTHON}} -m pip install git+https://github.com/ilastik/clearscale@ilastik-review2
         - {{PYTHON}} -m pip install . --no-deps -vv
     requirements:
       host:
@@ -29,8 +28,6 @@ outputs:
         - pip
         - setuptools >=64.0
         - setuptools_scm >=6.2
-        - hatchling
-        - hatch-vcs
       run:
         - python >=3.10
         - numpy >=1.25
@@ -82,6 +79,8 @@ outputs:
         - zarr 2.*
         # Third-party object feature plugins
         - sphericaltexture_plugin 0.1.0
+        - pip:
+            - clearscale==0.9.0rc1
       run_constrained:
         - tiktorch 26.5.0
         # TODO: investigate pytorch-3dunet dependency changes 1.9.3 and up #3079
