@@ -113,7 +113,7 @@ class OpFormattedDataExport(Operator):
     ConvertedImage = OutputSlot()  # Not yet re-ordered
     ImageToExport = OutputSlot()  # Preview of the pre-processed image that will be exported
     ExportPath = OutputSlot()  # Location of the saved file after export is complete
-    TargetScales = OutputSlot()  # Scaling parameter for multi-scale OME-Zarr
+    TargetScales = OutputSlot()  # Target shapes for multi-scale OME-Zarr export. {scale_key : {axis_key : int}}
     FormatSelectionErrorMsg = OutputSlot()  # bool, True if currently selected format can support the export data
 
     # This op's slots that are user-configurable through DataExportOptionsDlg
