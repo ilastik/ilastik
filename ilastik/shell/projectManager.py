@@ -148,6 +148,16 @@ class ProjectManager(object):
         if "mode" in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
         os.makedirs(os.path.dirname(projectFilePath), exist_ok=True)
+
+        # mode="w" truncates before acquiring the HDF5 lock, so check accessibility first.
+        # See https://github.com/ilastik/ilastik/issues/3235
+        if os.path.exists(projectFilePath):
+            try:
+                with h5py.File(projectFilePath, mode="r"):
+                    pass
+            except OSError as e:
+                raise OSError(f"Cannot overwrite existing project file: {projectFilePath}") from e
+
         h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__.encode("utf-8"))
         h5File.create_dataset("time", data=time.ctime().encode("utf-8"))
