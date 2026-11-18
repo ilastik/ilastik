@@ -135,7 +135,12 @@ class DataExportGui(QWidget):
             multislot[index].notifyReady(bind(self.updateTableForSlot))
             if multislot[index].ready():
                 self.updateTableForSlot(multislot[index])
-
+            
+            @threadRoutedWithRouter(self.threadRouter)
+            def _update_export_path(slot):
+                self.updateTableForSlot(slot)
+            
+            multislot[index].notifyDirty(bind(_update_export_path))
             multislot[index].notifyUnready(self._updateExportButtons)
             multislot[index].notifyReady(self._updateExportButtons)
 
