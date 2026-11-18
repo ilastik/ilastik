@@ -28,6 +28,7 @@ from qtpy.QtCore import QEvent, Qt, QTimer, Signal
 from qtpy.QtGui import QPaintEvent, QShowEvent
 from qtpy.QtWidgets import (
     QAbstractItemView,
+    QMenu,
     QPushButton,
     QStyledItemDelegate,
     QTableWidget,
@@ -143,6 +144,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         self.deleteButton.clicked.connect(self._delete_selected)
         self.tableWidget.itemSelectionChanged.connect(self._update_delete_button)
         self.tableWidget.installEventFilter(self)
+        self.tableWidget.viewport().installEventFilter(self)
 
         def _sync_viewer_position(currentRow, _currentColumn, _previousRow, _previousColumn):
             item = self.tableWidget.item(currentRow, 0)
@@ -167,7 +169,35 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
                 if event.type() == QEvent.KeyPress:
                     self._delete_selected()
                 return True
+        elif watched is self.tableWidget.viewport():
+            if event.type() == QEvent.ContextMenu:
+                # Keep the event's original screen position, including across viewer/layout updates.
+                self._show_context_menu(event.pos(), event.globalPos())
+                return True
+        elif isinstance(watched, QMenu):
+            if event.type() == QEvent.Show:
+                # Qt has placed the menu at the click, shifted where needed to fit on screen.
+                watched.setProperty("annotationMenuPosition", watched.pos())
+            elif event.type() == QEvent.Move and watched.isVisible():
+                # Some window managers (e.g. Hyprland with XWayland) re-center popups after they appear.
+                position = watched.property("annotationMenuPosition")
+                if position is not None and watched.pos() != position:
+                    watched.move(position)
         return super().eventFilter(watched, event)
+
+    def _show_context_menu(self, position, global_position):
+        item = self.tableWidget.itemAt(position)
+        if item is None:
+            return
+        # Keep a multi-selection when opening its menu; otherwise target the clicked row.
+        if not item.isSelected():
+            self.tableWidget.selectRow(item.row())
+        menu = QMenu(self.tableWidget)
+        menu.addAction("Delete selected annotations", self._delete_selected)
+        # Keep Qt's placement if the window manager moves the popup (see eventFilter).
+        menu.installEventFilter(self)
+        menu.exec_(global_position)
+        menu.deleteLater()
 
     def _delete_selected(self):
         # Snapshot identities before deletion triggers a table refresh (and possibly sorting).

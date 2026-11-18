@@ -299,6 +299,114 @@ def test_delete_selected_objects_undo_redo(qtbot, request, gui_variant, graph):
 
 
 @pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
+@pytest.mark.parametrize("selected_row", [True, False], ids=["keep-selection", "select-clicked-row"])
+@pytest.mark.parametrize("delete", [True, False], ids=["delete", "cancel"])
+def test_context_menu_delete(qtbot, request, label_op, gui_variant, selected_row, delete):
+    from qtpy.QtCore import QPoint, QTimer, Qt
+    from qtpy.QtGui import QContextMenuEvent
+    from qtpy.QtWidgets import QApplication, QMenu
+
+    explorer = request.getfixturevalue(gui_variant)
+    label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
+    explorer.show()
+    qtbot.waitExposed(explorer)
+    table = explorer.tableWidget
+    table.sortItems(0, Qt.DescendingOrder)
+    if selected_row:
+        table.selectAll()
+    else:
+        table.selectRow(0)
+    expected = [table.item(row, 0).data(Qt.UserRole + 1) for row in (range(table.rowCount()) if selected_row else [1])]
+    requests = []
+    explorer.deleteRequested.connect(requests.append)
+
+    global_position = QPoint(250, 200)
+
+    def handle_menu():
+        menu = QApplication.activePopupWidget()
+        try:
+            assert isinstance(menu, QMenu)
+            assert menu.pos() == global_position
+            # A window manager may center the popup after mapping it.
+            menu.move(global_position + QPoint(100, 100))
+            assert menu.pos() == global_position
+            assert [action.text() for action in menu.actions()] == ["Delete selected annotations"]
+            if delete:
+                menu.actions()[0].trigger()
+        finally:
+            if menu is not None:
+                menu.close()
+
+    QTimer.singleShot(0, handle_menu)
+    position = table.visualItemRect(table.item(1, 0)).center()
+    # The event's screen coordinate is authoritative; do not recalculate it
+    # from widget geometry, which may change while selecting/navigating a row.
+    event = QContextMenuEvent(QContextMenuEvent.Mouse, position, global_position)
+    QApplication.sendEvent(table.viewport(), event)
+    assert requests == ([expected] if delete else [])
+    assert {index.row() for index in table.selectionModel().selectedRows()} == ({0, 1} if selected_row else {1})
+    explorer.cleanup()
+
+
+@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
+def test_context_menu_ignores_empty_space(qtbot, request, label_op, gui_variant):
+    from qtpy.QtCore import QPoint
+    from qtpy.QtGui import QContextMenuEvent
+    from qtpy.QtWidgets import QApplication
+
+    explorer = request.getfixturevalue(gui_variant)
+    label_op.Input.setValue({0: numpy.array([0.0, 1.0])})
+    explorer.show()
+    qtbot.waitExposed(explorer)
+    table = explorer.tableWidget
+    table.selectRow(0)
+    position = QPoint(5, table.viewport().height() - 1)
+    assert table.itemAt(position) is None
+    with patch("ilastik.widgets.labelExplorer.QMenu") as menu:
+        event = QContextMenuEvent(QContextMenuEvent.Mouse, position, table.viewport().mapToGlobal(position))
+        QApplication.sendEvent(table.viewport(), event)
+        menu.assert_not_called()
+    assert {index.row() for index in table.selectionModel().selectedRows()} == {0}
+    explorer.cleanup()
+
+
+@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
+def test_context_menu_stays_on_screen(qtbot, request, label_op, gui_variant):
+    from qtpy.QtCore import QPoint, QTimer
+    from qtpy.QtGui import QContextMenuEvent
+    from qtpy.QtWidgets import QApplication, QMenu
+
+    explorer = request.getfixturevalue(gui_variant)
+    label_op.Input.setValue({0: numpy.array([0.0, 1.0])})
+    explorer.show()
+    qtbot.waitExposed(explorer)
+    table = explorer.tableWidget
+    available = explorer.screen().availableGeometry()
+    global_position = available.bottomRight() - QPoint(1, 1)
+
+    def handle_menu():
+        menu = QApplication.activePopupWidget()
+        try:
+            assert isinstance(menu, QMenu)
+            # Popup menus may cover the taskbar on some platforms (e.g. Windows), but not leave the screen.
+            assert explorer.screen().geometry().contains(menu.frameGeometry())
+            # Qt shifts a menu opened in the screen corner so that it fits; keep that placement.
+            placed = menu.pos()
+            assert placed != global_position
+            menu.move(available.topLeft() - QPoint(50, 50))
+            assert menu.pos() == placed
+        finally:
+            if menu is not None:
+                menu.close()
+
+    QTimer.singleShot(0, handle_menu)
+    position = table.visualItemRect(table.item(0, 0)).center()
+    event = QContextMenuEvent(QContextMenuEvent.Mouse, position, global_position)
+    QApplication.sendEvent(table.viewport(), event)
+    explorer.cleanup()
+
+
+@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
 def test_delete_key_takes_precedence_over_application_shortcut(qtbot, request, label_op, gui_variant):
     from qtpy.QtCore import Qt
     from qtpy.QtWidgets import QShortcut
