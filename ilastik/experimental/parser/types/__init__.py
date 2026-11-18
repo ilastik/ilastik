@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2024, the ilastik developers
+#       Copyright (C) 2011-2026, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -18,21 +18,5 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-import json
-from typing import Any, List, Union
-
-import h5py
-
-from ilastik.applets.base.appletSerializer.serializerUtils import deserialize_string_from_h5
-
-
-def deserialize_str_list_from_h5(str_list: h5py.Dataset) -> List[str]:
-    return [x.decode() for x in str_list]
-
-
-def deserialize_axistags_from_h5(ds: h5py.Dataset) -> dict[str, Union[float, int, str]]:
-    return json.loads(deserialize_string_from_h5(ds))["axes"]
-
-
-def deserialize_arraylike_from_h5(ds: h5py.Dataset) -> Any:
-    return ds[()]
+from . import applets as applets
+from . import base as base
