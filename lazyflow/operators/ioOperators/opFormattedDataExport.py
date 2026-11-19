@@ -201,7 +201,7 @@ class OpFormattedDataExport(Operator):
                 "The ROI you are attempting to export exceeds the extents of your dataset.  Clipping to dataset bounds."
             )
 
-        new_start, new_stop = tuple(clipped_start), tuple(clipped_stop)
+        new_start, new_stop = tuple(clipped_start.tolist()), tuple(clipped_stop.tolist())
         return new_start, new_stop
 
     def get_roi(self) -> Slice5D:
