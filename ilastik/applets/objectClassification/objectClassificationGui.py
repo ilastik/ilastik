@@ -306,6 +306,7 @@ class ObjectClassificationGui(LabelingGui):
             self.volumeEditorWidget.editor.navCtrl.panSlicingViews(pos, [0, 1, 2])
 
         label_explorer_widget.positionRequested.connect(_goto)
+        label_explorer_widget.deleteRequested.connect(self._delete_explorer_annotations)
 
         def update_labels(*args, **kwargs):
             label_names = [x.name for x in self.labelListData]
@@ -318,6 +319,24 @@ class ObjectClassificationGui(LabelingGui):
         self._labelControlUi.labelListModel.rowsRemoved.connect(update_labels)
 
         return label_explorer_widget
+
+    def _delete_explorer_annotations(self, annotations):
+        self._undoStack.beginMacro("Delete annotations")
+        try:
+            for annotation in annotations:
+                timepoint, object_index = annotation.identifier
+                labels = self.op.LabelInputs.value
+                self._undoStack.push(
+                    LabelObjectCommand(
+                        slot=self.op.LabelInputs,
+                        labelsdict=labels,
+                        old_value=labels[timepoint][object_index],
+                        new_value=0,
+                        dirty_key=(timepoint, object_index),
+                    )
+                )
+        finally:
+            self._undoStack.endMacro()
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
