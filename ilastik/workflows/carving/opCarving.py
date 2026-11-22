@@ -284,6 +284,12 @@ class OpCarving(Operator):
         logger.info("click on %r, supervoxel=%d: %r" % (position3d, sv, names))
         return names
 
+    def getObjectIds(self):
+        """
+        Returns a mapping of saved object name -> object ID.
+        """
+        return self._mst.object_names.copy() if self._mst is not None else {}
+
     @Operator.forbidParallelExecute
     def clearCurrentLabelsAndObject(self):
         """

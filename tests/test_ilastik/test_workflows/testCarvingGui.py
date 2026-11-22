@@ -28,7 +28,6 @@ logger.setLevel(logging.DEBUG)
 import platform
 import pytest
 
-
 if os.environ.get("ON_CIRCLE_CI"):
     pytest.skip("These tests are too flaky on circleCI", allow_module_level=True)
 
@@ -297,6 +296,27 @@ class TestCarvingGui(ShellGuiTestCaseBase):
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
             saveThread.join()
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_04_object_ids(self):
+        """
+        getObjectIds maps each saved object name to its ID,
+        which the object browser uses to look up the object's color.
+        Relies on test_03 having saved "Object 1".
+        """
+
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            op_carving = workflow.carvingApplet.topLevelOperator.getLane(0)
+
+            object_ids = op_carving.getObjectIds()
+            assert object_ids == {"Object 1": 1}
+
+            # returned dict is a copy, so changing it should not affect it
+            object_ids["Object 1"] = 42
+            assert op_carving.getObjectIds() == {"Object 1": 1}
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
