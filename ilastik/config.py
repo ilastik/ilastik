@@ -47,7 +47,7 @@ logging_config: ~/custom_ilastik_logging_config.json
 default_config = """
 [ilastik]
 debug: false
-output_filename_format: {dataset_dir}/{nickname}_{result_type}
+output_filename_format: {dataset_dir}/{nickname}_{export_source_hyphenated}
 output_format: compressed hdf5
 
 [lazyflow]
