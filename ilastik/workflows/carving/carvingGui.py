@@ -29,8 +29,8 @@ import numpy
 
 # PyQt
 from qtpy import uic
-from qtpy.QtGui import QColor, QIcon
-from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog, QSizePolicy
+from qtpy.QtGui import QColor, QIcon, QPixmap
+from qtpy.QtWidgets import QMenu, QMessageBox, QFileDialog, QSizePolicy, QListWidgetItem
 
 # lazyflow
 from ilastik.utility.gui.qtcompat import ensure_bool
@@ -348,7 +348,12 @@ class CarvingGui(LabelingGui):
         """show object names and allow user to load/delete them"""
         dialog = uic.loadUi(self.dialogdirCOM)
         names = self.getObjectNames()
-        dialog.objectNames.addItems(human_sorted(names))
+        object_ids = self.topLevelOperatorView.getObjectIds()
+        table = self._doneSegmentationColortable
+        for name in human_sorted(names):
+            pm = QPixmap(16, 16)
+            pm.fill(QColor.fromRgba(table[object_ids[name] % len(table)]))
+            dialog.objectNames.addItem(QListWidgetItem(QIcon(pm), name))
 
         def loadSelection():
             selected = dialog.objectNames.selectedItems()
