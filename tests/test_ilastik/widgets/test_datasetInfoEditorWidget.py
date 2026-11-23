@@ -117,7 +117,7 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, png_image, empty_
         nickname="SOME_NICKNAME",
         axiskeys="xyc",
         normalizeDisplay=True,
-        drange=(10, 20),
+        drange=(120, 200),
         display_mode="alpha-modulated",
         location=RelativeFilesystemDatasetInfo,
     )
@@ -125,7 +125,7 @@ def test_datasetinfo_editor_widget_modifies_single_info(qtbot, png_image, empty_
     assert edited_info.axiskeys == "xyc"
     assert edited_info.nickname == "SOME_NICKNAME"
     assert edited_info.normalizeDisplay == True
-    assert edited_info.drange == (10, 20)
+    assert edited_info.drange == (120, 200)
     assert edited_info.display_mode == "alpha-modulated"
     assert isinstance(edited_info, RelativeFilesystemDatasetInfo)
     assert edited_info.filePath == Path(png_image).absolute().as_posix()
