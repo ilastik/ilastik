@@ -81,6 +81,7 @@ class DatasetInfoEditorWidget(QDialog):
         self.rangeMaxSpinBox.setMinimum(max(get_dtype_info(info.laneDtype).min for info in infos))
         self.rangeMaxSpinBox.valueChanged.connect(self.validate_new_data)
         self.rangeMaxSpinBox.setMaximum(min(get_dtype_info(info.laneDtype).max for info in infos))
+        self.rangeMinSpinBox.setMaximum(self.rangeMaxSpinBox.maximum())
         self.clearRangeButton.clicked.connect(self.clearNormalization)
         self.clearNormalization()
 
