@@ -1,7 +1,12 @@
 from qtpy.QtCore import QRect
 from ilastik.shell.gui.ilastikShell import IlastikShell
+from ilastik.shell.projectManager import ProjectManager
 
+import h5py
+import multiprocessing
+import os
 import pytest
+import time
 from unittest.mock import patch
 
 
@@ -66,3 +71,56 @@ def test_createAndLoadNewProject_shows_dialog_on_oserror():
 
     # Project must NOT have been loaded
     shell._loadProject.assert_not_called()
+
+
+def _lock_file_subprocess(project_path, ready_event, stop_event):
+    """Subprocess helper: open the project file and hold it locked."""
+    with h5py.File(project_path, "r+"):
+        ready_event.set()
+        stop_event.wait()
+
+
+def test_createBlankProjectFile_does_not_corrupt_locked_file(tmp_path):
+    """
+    When the target file exists but is locked by another process,
+    createBlankProjectFile must raise an OSError without truncating the file.
+
+    Reproduces the production scenario: process 1 has the file open via
+    openProjectFile (holding an h5py lock), and process 2 attempts to
+    overwrite it with createBlankProjectFile.
+
+    Regression test for https://github.com/ilastik/ilastik/issues/3235
+    """
+    project_path = str(tmp_path / "test.ilp")
+
+    # Create a valid project file (simulates an existing project open in another instance)
+    with h5py.File(project_path, "w") as f:
+        f.create_dataset("ilastikVersion", data=b"1.4.2")
+        f.create_dataset("workflowName", data=b"PixelClassification")
+    original_size = os.path.getsize(project_path)
+    assert original_size > 0
+
+    ready_event = multiprocessing.Event()
+    stop_event = multiprocessing.Event()
+
+    # Start subprocess that holds the file open (simulates another ilastik instance)
+    p = multiprocessing.Process(target=_lock_file_subprocess, args=(project_path, ready_event, stop_event))
+    p.start()
+
+    try:
+        # Wait for the subprocess to lock the file
+        ready_event.wait(timeout=10)
+        assert p.is_alive(), "Lock subprocess died before locking the file"
+        # Give the lock a moment to fully take effect
+        time.sleep(0.5)
+
+        with pytest.raises(OSError):
+            ProjectManager.createBlankProjectFile(project_path)
+
+        # Verify the file was NOT corrupted
+        assert os.path.getsize(project_path) == original_size
+        with h5py.File(project_path, "r") as f:
+            assert f["ilastikVersion"][()] == b"1.4.2"
+    finally:
+        stop_event.set()
+        p.join(timeout=5)
