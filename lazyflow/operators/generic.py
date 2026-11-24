@@ -810,10 +810,11 @@ class OpMultiChannelSelector(Operator):
         self._selected_channels: None | tuple[int, ...] = None
 
     def setupOutputs(self):
-        if self.Input.meta.getAxisKeys()[-1] != "c":
+        axis_keys = self.Input.meta.getAxisKeys()
+        if "c" not in axis_keys:
             raise ValueError("Channel axis must be last for the input")
 
-        channel_axis = -1
+        channel_axis = axis_keys.index("c")
 
         max_channel = self.Input.meta.getTaggedShape()["c"]
         selected_channels: Tuple[int] = (
@@ -825,19 +826,20 @@ class OpMultiChannelSelector(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
 
-        in_shape = self.Input.meta.shape
-        self.Output.meta.shape = (*in_shape[:-1], len(selected_channels))
+        out_shape = list(self.Input.meta.shape)
+        out_shape[channel_axis] = len(selected_channels)
+        self.Output.meta.shape = tuple(out_shape)
 
         ideal = self.Output.meta.ideal_blockshape
         if ideal is not None:
-            assert len(ideal) == len(in_shape)
+            assert len(ideal) == len(out_shape)
             ideal = numpy.asarray(ideal, dtype=numpy.int64)
             ideal[channel_axis] = 1
             self.Output.meta.ideal_blockshape = tuple(ideal)
 
         max_blockshape = self.Output.meta.max_blockshape
         if max_blockshape is not None:
-            assert len(max_blockshape) == len(in_shape)
+            assert len(max_blockshape) == len(out_shape)
             max_blockshape = numpy.asarray(max_blockshape, dtype=numpy.int64)
             max_blockshape[channel_axis] = len(selected_channels)
             self.Output.meta.max_blockshape = tuple(max_blockshape)
@@ -848,7 +850,8 @@ class OpMultiChannelSelector(Operator):
         self.Output.meta.channel_names = [channel_names[s] for s in selected_channels]
 
     def execute(self, slot, subindex, roi, result):
-        channel_indexes: Tuple[int] = self._selected_channels[roi.start[-1] : roi.stop[-1]]
+        channel_axis = self.Output.meta.getAxisKeys().index("c")
+        channel_indexes: Tuple[int] = self._selected_channels[roi.start[channel_axis] : roi.stop[channel_axis]]
 
         # make sure to request the minimum (consecutive) channels
         input_roi = roi.copy()
@@ -856,8 +859,8 @@ class OpMultiChannelSelector(Operator):
         if len(channel_indexes) == 1:
             # Fetch in-place
             channel_index = channel_indexes[0]
-            input_roi.start[-1] = channel_index
-            input_roi.stop[-1] = channel_index + 1
+            input_roi.start[channel_axis] = channel_index
+            input_roi.stop[channel_axis] = channel_index + 1
             self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
 
         else:
@@ -867,9 +870,11 @@ class OpMultiChannelSelector(Operator):
             # and write them to the expected channel in result
             for i, channel in enumerate(channel_indexes):
                 # add 1 to channel indices stop for valid single channel slices
-                input_roi.start[-1] = channel
-                input_roi.stop[-1] = channel + 1
-                dest_key = tuple([slice(None) for _ in input_roi.start[:-1]]) + (slice(i, i + 1),)
+                input_roi.start[channel_axis] = channel
+                input_roi.stop[channel_axis] = channel + 1
+                dest_key = [slice(None) for _ in input_roi.start]
+                dest_key[channel_axis] = slice(i, i + 1)
+                dest_key = tuple(dest_key)
                 req = self.Input(input_roi.start, input_roi.stop).writeInto(result[dest_key])
                 pool.add(req)
 

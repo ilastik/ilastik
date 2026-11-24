@@ -430,12 +430,10 @@ class OpObjectExtractionBase(Operator, ABC):
 
         self._opLabelVolume = self._create_label_volume_op()
 
-        self._opReorderChannels = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=self.RawImage)
         self._opChannelSelector = OpMultiChannelSelector(parent=self)
-        self._opChannelSelector.Input.connect(self._opReorderChannels.Output)
+        self._opChannelSelector.Input.connect(self.RawImage)
         self._opChannelSelector.SelectedChannels.connect(self.SelectedChannels)
-        self._opReorderSelectedChannels = OpReorderAxes(parent=self)
-        self._opReorderSelectedChannels.Input.connect(self._opChannelSelector.Output)
+        self.SelectedChannelsImage.connect(self._opChannelSelector.Output)
 
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
@@ -468,8 +466,6 @@ class OpObjectExtractionBase(Operator, ABC):
 
     def setupOutputs(self):
         self._checkConstraints()
-        self._opReorderSelectedChannels.AxisOrder.setValue(self.RawImage.meta.getAxisKeys())
-        self.SelectedChannelsImage.connect(self._opReorderSelectedChannels.Output)
 
         taggedShape = self.RawImage.meta.getTaggedShape()
         for k in list(taggedShape.keys()):
