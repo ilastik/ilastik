@@ -138,11 +138,6 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         )
         self.setLayout(layout)
 
-        self.deleteButton = QPushButton("Delete selected annotations")
-        self.deleteButton.setEnabled(False)
-        layout.addWidget(self.deleteButton)
-        self.deleteButton.clicked.connect(self._delete_selected)
-        self.tableWidget.itemSelectionChanged.connect(self._update_delete_button)
         self.tableWidget.installEventFilter(self)
         self.tableWidget.viewport().installEventFilter(self)
 
