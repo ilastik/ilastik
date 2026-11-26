@@ -158,17 +158,6 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
 
     def eventFilter(self, watched, event):
         if watched is self.tableWidget:
-            if (
-                event.type() in (QEvent.ShortcutOverride, QEvent.KeyPress)
-                and event.key() == Qt.Key_Delete
-                and event.modifiers() in (Qt.NoModifier, Qt.KeypadModifier)
-            ):
-                # Handle Delete on the table itself: it takes precedence over application-wide "Del"
-                # shortcuts (e.g. in Counting), and works for synthesized key events on Windows.
-                event.accept()
-                if event.type() == QEvent.KeyPress:
-                    self._delete_selected()
-                return True
         elif watched is self.tableWidget.viewport():
             if event.type() == QEvent.ContextMenu:
                 # Keep the event's original screen position, including across viewer/layout updates.
