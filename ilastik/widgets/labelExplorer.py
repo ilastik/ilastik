@@ -153,8 +153,6 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
 
         self.tableWidget.currentCellChanged.connect(_sync_viewer_position)
 
-    def _update_delete_button(self):
-        self.deleteButton.setEnabled(bool(self.tableWidget.selectionModel().selectedRows()))
 
     def eventFilter(self, watched, event):
         if watched is self.tableWidget:
