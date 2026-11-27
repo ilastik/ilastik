@@ -252,7 +252,7 @@ class DatasetInfoEditorWidget(QDialog):
                     filePath = info.effective_path
 
                 if new_internal_path and {new_internal_path} != set(info.internal_paths):
-                    edited_info = RelativeFilesystemDatasetInfo.create_or_fallback_to_absolute(
+                    edited_info = RelativeFilesystemDatasetInfo.create_or_dispatch(
                         filePath=filePath, project_file=self.serializer.topLevelOperator.ProjectFile.value
                     )
                     self.edited_infos.append(edited_info)
