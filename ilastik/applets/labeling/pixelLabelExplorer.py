@@ -19,9 +19,11 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import logging
+from contextlib import contextmanager
 from functools import partial
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
+import numpy
 import vigra
 from skimage.segmentation import flood
 from qtpy.QtCore import Qt
@@ -30,6 +32,7 @@ from ilastik.widgets.labelExplorer import LabelExplorerBase, LookupDelegate, Ann
 from lazyflow.base import SPATIAL_AXES, Axiskey
 from lazyflow.request.request import Request, RequestPool
 from lazyflow.roi import getIntersectingBlocks, roiToSlice
+from lazyflow.rtype import SubRegion
 from lazyflow.slot import OutputSlot
 from lazyflow.utility.timer import timeLogged
 
@@ -71,6 +74,9 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
             Neighborhood.SINGLE if getattr(self._label_slot.meta, "is_blocked_cache", False) else Neighborhood.NONE
         )
 
+        # Dirty rois collected while updates are batched (see batched_updates)
+        self._batched_rois: Optional[List[SubRegion]] = None
+
         self._setupUi()
 
         self.add_unsubscribe_fn(label_slot.notifyDirty(self.update_table))
@@ -98,14 +104,40 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
 
         as reaction to dirty notification from output slot.
         """
+        if self._batched_rois is not None:
+            self._batched_rois.append(roi)
+        else:
+            self._update_table_for_rois([roi])
+
+    @contextmanager
+    def batched_updates(self):
+        """Update the table only once for all label changes made in this context
+
+        A blocked label cache sends a dirty notification for every block that is
+        written, so a large change would otherwise update the table many times.
+        """
+        rois: List[SubRegion] = []
+        self._batched_rois = rois
+        try:
+            yield
+        finally:
+            self._batched_rois = None
+            if rois:
+                self._update_table_for_rois(rois)
+
+    def _update_table_for_rois(self, rois: List[SubRegion]):
         if self._neighborhood is Neighborhood.NONE:
             self._clear_blocking()
             non_zero_slicings: List[Tuple[slice, ...]] = self._nonzero_blocks_slot.value
             self.populate_table(non_zero_slicings)
         else:
             blockShape = self._label_slot.meta.ideal_blockshape
-            block_starts = getIntersectingBlocks(blockshape=blockShape, roi=(roi.start, roi.stop))
-            block_rois = [(bl, bl + blockShape) for bl in block_starts]
+            block_starts = {
+                tuple(bl)
+                for roi in rois
+                for bl in getIntersectingBlocks(blockshape=blockShape, roi=(roi.start, roi.stop))
+            }
+            block_rois = [(bl, numpy.add(bl, blockShape)) for bl in sorted(block_starts)]
             block_slicings = [roiToSlice(*br) for br in block_rois]
             self.populate_table(block_slicings)
 
@@ -151,12 +183,18 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
                 annotation_anchors.append(AnnotationAnchor(label=k.label, position=k.tagged_pixel_anchor, identifier=k))
         return annotation_anchors
 
-    def erasure_masks(self, annotations: list[AnnotationAnchor]):
-        """Return exact component masks, including each selected annotation's blocks.
+    def erasure_mask(
+        self, annotations: list[AnnotationAnchor]
+    ) -> Optional[Tuple[Dict[Axiskey, slice], vigra.VigraArray]]:
+        """Return the pixels of the given annotations, including all of their blocks.
 
         Bounding boxes can contain other annotations, even of the same class. Flood
         from each region's annotated pixel to avoid deleting those neighbors.
-        Resolve all region identities before any writes invalidate the region cache.
+        Call this before erasing: writes invalidate the region cache.
+
+        Returns:
+            The tagged slicing of the combined bounding box of all annotations and a
+            boolean mask of their pixels within it, or None if there is nothing to erase.
         """
         selected = {annotation.identifier for annotation in annotations}
         regions = []
@@ -166,13 +204,19 @@ class PixelLabelExplorerWidget(LabelExplorerBase):
                 anchor = self._regions_dict[anchor]
             if anchor in selected:
                 regions.append(region)
+        if not regions:
+            return None
 
-        masks = []
+        start = [min(region.slices[i].start for region in regions) for i in range(len(self._axiskeys))]
+        stop = [max(region.slices[i].stop for region in regions) for i in range(len(self._axiskeys))]
+        mask = numpy.zeros([b - a for a, b in zip(start, stop)], dtype=bool)
         for region in regions:
             data = self._label_slot[region.slices].wait()
             seed = tuple(int(region.tagged_pixel_anchor[k] - sl.start) for k, sl in zip(self._axiskeys, region.slices))
             if data[seed] != region.label:
                 continue
-            mask = vigra.taggedView(flood(data, seed), "".join(self._axiskeys))
-            masks.append((region.tagged_slicing, mask))
-        return masks
+            mask[tuple(slice(sl.start - a, sl.stop - a) for sl, a in zip(region.slices, start))] |= flood(data, seed)
+        if not mask.any():
+            return None
+        tagged_slicing = {k: slice(a, b) for k, a, b in zip(self._axiskeys, start, stop)}
+        return tagged_slicing, vigra.taggedView(mask, "".join(self._axiskeys))

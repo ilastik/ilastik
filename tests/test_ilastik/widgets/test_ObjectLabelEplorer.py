@@ -19,15 +19,36 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from contextlib import nullcontext as does_not_raise
+from functools import partial
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy
 import pytest
 import vigra
+from qtpy.QtCore import QPoint, QTimer, Qt
+from qtpy.QtGui import QContextMenuEvent
+from qtpy.QtWidgets import QApplication, QMenu, QUndoStack
 
+from ilastik.applets.objectClassification.objectClassificationGui import ObjectClassificationGui
 from ilastik.applets.objectClassification.objectLabelExplorer import ObjectLabelExplorerWidget
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpAdaptTimeListRoi
+from lazyflow.graph import InputSlot, Operator
 from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.rtype import List
+from lazyflow.stype import Opaque
+
+
+class OpObjectLabelStore(Operator):
+    """Holds object labels in a slot of the same type as object classification's LabelInputs"""
+
+    Labels = InputSlot(stype=Opaque, rtype=List)
+
+    def setupOutputs(self):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
 
 
 @pytest.fixture
@@ -240,61 +261,38 @@ def test_populate_raises_for_unexpected_object_center_dimension(
         label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
 
 
-@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
-def test_delete_selected_objects_undo_redo(qtbot, request, gui_variant, graph):
-    from functools import partial
-    from types import SimpleNamespace
-
-    from qtpy.QtCore import Qt
-    from qtpy.QtWidgets import QUndoStack
-
-    from ilastik.applets.objectClassification.objectClassificationGui import ObjectClassificationGui
-
-    from lazyflow.graph import Operator, InputSlot
-    from lazyflow.rtype import List
-    from lazyflow.stype import Opaque
-
-    class ObjectLabelStore(Operator):
-        Labels = InputSlot(stype=Opaque, rtype=List)
-
-        def setupOutputs(self):
-            pass
-
-        def propagateDirty(self, slot, subindex, roi):
-            pass
-
-    store = ObjectLabelStore(graph=graph)
-    label_op = SimpleNamespace(Input=store.Labels)
-    features = request.getfixturevalue("feature_op_2d" if gui_variant.endswith("2d") else "feature_op_3d")
-    explorer = ObjectLabelExplorerWidget(features.Output, store.Labels, axiskeys="xy")
+@pytest.mark.parametrize("feature_variant", ["feature_op_2d", "feature_op_3d"])
+def test_delete_selected_objects_undo_redo(qtbot, request, feature_variant, graph):
+    store = OpObjectLabelStore(graph=graph)
+    features = request.getfixturevalue(feature_variant)
+    explorer = ObjectLabelExplorerWidget(features.Output, store.Labels, axiskeys=["x", "y"])
     qtbot.addWidget(explorer)
-    label_op.Input.setValue({0: numpy.array([0.0, 1.0, 1.0])})
+    store.Labels.setValue({0: numpy.array([0.0, 1.0, 1.0])})
     explorer.show()
     qtbot.waitExposed(explorer)
     stack = QUndoStack(explorer)
-    gui = SimpleNamespace(_undoStack=stack, op=SimpleNamespace(LabelInputs=label_op.Input))
+    gui = SimpleNamespace(_undoStack=stack, op=SimpleNamespace(LabelInputs=store.Labels))
     explorer.deleteRequested.connect(partial(ObjectClassificationGui._delete_explorer_annotations, gui))
     explorer.tableWidget.sortItems(0, Qt.DescendingOrder)
     # The object center need not be inside the object; use the stored object ID.
     selected = explorer.tableWidget.item(0, 0).data(Qt.UserRole + 1).identifier[1]
     explorer.tableWidget.selectRow(0)
-    qtbot.mouseClick(explorer.deleteButton, Qt.LeftButton)
+    explorer._delete_selected()
     expected = numpy.array([0.0, 1.0, 1.0])
     expected[selected] = 0
-    numpy.testing.assert_array_equal(label_op.Input.value[0], expected)
+    numpy.testing.assert_array_equal(store.Labels.value[0], expected)
     assert explorer.tableWidget.rowCount() == 1
     stack.undo()
-    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 1, 1])
+    numpy.testing.assert_array_equal(store.Labels.value[0], [0, 1, 1])
     stack.redo()
-    numpy.testing.assert_array_equal(label_op.Input.value[0], expected)
+    numpy.testing.assert_array_equal(store.Labels.value[0], expected)
     stack.undo()
     explorer.tableWidget.selectAll()
-    qtbot.mouseClick(explorer.deleteButton, Qt.LeftButton)
-    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 0, 0])
+    explorer._delete_selected()
+    numpy.testing.assert_array_equal(store.Labels.value[0], [0, 0, 0])
     assert explorer.tableWidget.rowCount() == 0
-    assert not explorer.deleteButton.isEnabled()
     stack.undo()
-    numpy.testing.assert_array_equal(label_op.Input.value[0], [0, 1, 1])
+    numpy.testing.assert_array_equal(store.Labels.value[0], [0, 1, 1])
     explorer.cleanup()
 
 
@@ -302,10 +300,6 @@ def test_delete_selected_objects_undo_redo(qtbot, request, gui_variant, graph):
 @pytest.mark.parametrize("selected_row", [True, False], ids=["keep-selection", "select-clicked-row"])
 @pytest.mark.parametrize("delete", [True, False], ids=["delete", "cancel"])
 def test_context_menu_delete(qtbot, request, label_op, gui_variant, selected_row, delete):
-    from qtpy.QtCore import QPoint, QTimer, Qt
-    from qtpy.QtGui import QContextMenuEvent
-    from qtpy.QtWidgets import QApplication, QMenu
-
     explorer = request.getfixturevalue(gui_variant)
     label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
     explorer.show()
@@ -350,10 +344,6 @@ def test_context_menu_delete(qtbot, request, label_op, gui_variant, selected_row
 
 @pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
 def test_context_menu_ignores_empty_space(qtbot, request, label_op, gui_variant):
-    from qtpy.QtCore import QPoint
-    from qtpy.QtGui import QContextMenuEvent
-    from qtpy.QtWidgets import QApplication
-
     explorer = request.getfixturevalue(gui_variant)
     label_op.Input.setValue({0: numpy.array([0.0, 1.0])})
     explorer.show()
@@ -372,10 +362,6 @@ def test_context_menu_ignores_empty_space(qtbot, request, label_op, gui_variant)
 
 @pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
 def test_context_menu_stays_on_screen(qtbot, request, label_op, gui_variant):
-    from qtpy.QtCore import QPoint, QTimer
-    from qtpy.QtGui import QContextMenuEvent
-    from qtpy.QtWidgets import QApplication, QMenu
-
     explorer = request.getfixturevalue(gui_variant)
     label_op.Input.setValue({0: numpy.array([0.0, 1.0])})
     explorer.show()
@@ -403,30 +389,4 @@ def test_context_menu_stays_on_screen(qtbot, request, label_op, gui_variant):
     position = table.visualItemRect(table.item(0, 0)).center()
     event = QContextMenuEvent(QContextMenuEvent.Mouse, position, global_position)
     QApplication.sendEvent(table.viewport(), event)
-    explorer.cleanup()
-
-
-@pytest.mark.parametrize("gui_variant", ["label_explorer_2d", "label_explorer_3d"])
-def test_delete_key_takes_precedence_over_application_shortcut(qtbot, request, label_op, gui_variant):
-    from qtpy.QtCore import Qt
-    from qtpy.QtWidgets import QShortcut
-
-    explorer = request.getfixturevalue(gui_variant)
-    label_op.Input.setValue({0: numpy.array([0.0, 1.0, 2.0])})
-    # Applets can register "Del" through volumina's shortcut manager (e.g. Counting's "Delete a Box"),
-    # which creates an application-wide shortcut.
-    shortcut_activations = []
-    QShortcut("Del", explorer, lambda: shortcut_activations.append(True), context=Qt.ApplicationShortcut)
-    explorer.show()
-    explorer.activateWindow()
-    qtbot.waitUntil(explorer.isActiveWindow)
-    table = explorer.tableWidget
-    table.selectRow(0)
-    expected = [table.item(0, 0).data(Qt.UserRole + 1)]
-    requests = []
-    explorer.deleteRequested.connect(requests.append)
-    table.setFocus()
-    qtbot.keyClick(table, Qt.Key_Delete)
-    assert requests == [expected]
-    assert shortcut_activations == []
     explorer.cleanup()

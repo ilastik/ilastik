@@ -29,7 +29,6 @@ from qtpy.QtGui import QPaintEvent, QShowEvent
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QMenu,
-    QPushButton,
     QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
@@ -138,7 +137,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         )
         self.setLayout(layout)
 
-        self.tableWidget.installEventFilter(self)
+        self.tableWidget.setToolTip("Right-click to delete the selected annotations")
         self.tableWidget.viewport().installEventFilter(self)
 
         def _sync_viewer_position(currentRow, _currentColumn, _previousRow, _previousColumn):
@@ -148,10 +147,8 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
 
         self.tableWidget.currentCellChanged.connect(_sync_viewer_position)
 
-
     def eventFilter(self, watched, event):
-        if watched is self.tableWidget:
-        elif watched is self.tableWidget.viewport():
+        if watched is self.tableWidget.viewport():
             if event.type() == QEvent.ContextMenu:
                 # Keep the event's original screen position, including across viewer/layout updates.
                 self._show_context_menu(event.pos(), event.globalPos())
@@ -259,7 +256,6 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
                 label_item = QTableWidgetItem(str(anchor.label))
                 label_item.setFlags(self._item_flags)
                 self.tableWidget.setItem(row, len(self._display_axiskeys), label_item)
-        self._update_delete_button()
 
     def populate_table(self, *args):
         if not self._shown:

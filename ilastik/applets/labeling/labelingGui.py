@@ -66,6 +66,23 @@ class Tool:
     Threshold = 3
 
 
+class DeleteAnnotationsCommand(DrawLabelCommand):
+    """Erase annotations with a single label write and a single label explorer update"""
+
+    def __init__(self, label_explorer: PixelLabelExplorerWidget, **kwargs):
+        super().__init__(**kwargs)
+        self.setText("Delete annotations")
+        self._label_explorer = label_explorer
+
+    def redo(self):
+        with self._label_explorer.batched_updates():
+            super().redo()
+
+    def undo(self):
+        with self._label_explorer.batched_updates():
+            super().undo()
+
+
 @dataclass
 class LabelingSlots:
     """
@@ -406,20 +423,19 @@ class LabelingGui(LayerViewerGui):
         return label_explorer_widget
 
     def _delete_explorer_annotations(self, label_explorer, annotations):
-        masks = label_explorer.erasure_masks(annotations)
-        eraser = self._labelingSlots.labelEraserValue.value
+        erasure = label_explorer.erasure_mask(annotations)
+        if erasure is None:
+            return
+        tagged_slicing, mask = erasure
+        slicing = tuple(tagged_slicing.get(k, slice(0, 1)) for k in "txyzc")
+        mask = mask.withAxes("txyzc")
         sink = self.editor.brushingController._dataSink
-        undo_stack = self.editor._undoStack
-        undo_stack.beginMacro("Delete annotations")
-        try:
-            for tagged_slicing, mask in masks:
-                slicing = tuple(tagged_slicing.get(k, slice(0, 1)) for k in "txyzc")
-                labels = numpy.where(mask.withAxes("txyzc"), eraser, 0).astype("uint8")
-                # Read after preceding deletions, since component bounding boxes may overlap.
-                old_data = sink.request(slicing).wait().copy()
-                undo_stack.push(DrawLabelCommand(sink=sink, slicing=slicing, old_data=old_data, labels=labels))
-        finally:
-            undo_stack.endMacro()
+        # Keep only the erased pixels, so that redo and undo leave other labels in the bounding box untouched.
+        old_data = numpy.where(mask, sink.request(slicing).wait(), 0).astype("uint8")
+        labels = numpy.where(mask, self._labelingSlots.labelEraserValue.value, 0).astype("uint8")
+        self.editor._undoStack.push(
+            DeleteAnnotationsCommand(label_explorer, sink=sink, slicing=slicing, old_data=old_data, labels=labels)
+        )
 
     def _cleanup_label_explorer(self):
         wdgt = self.label_explorer_widget
