@@ -226,8 +226,10 @@ class OpTiffReader(Operator):
             return unit
 
         def from_ascii(raw_string: str):
-            # necessary for nonstandard unit characters, e.g. mu
-            return raw_string.encode("ascii").decode("unicode_escape")
+            # Older tifffile versions return escaped ASCII for some units.
+            if raw_string.isascii():
+                return raw_string.encode("ascii").decode("unicode_escape")
+            return raw_string
 
         return from_ascii(handle_stringified_tuple((ij_meta.get(key, ""))))
 
