@@ -18,14 +18,20 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from functools import partial
+from types import SimpleNamespace
 from typing import Iterator, Literal, Tuple
 from unittest.mock import patch
 
 import numpy
 import pytest
 import vigra
+from qtpy.QtCore import QItemSelectionModel, Qt
+from qtpy.QtWidgets import QUndoStack
+from volumina.api import LazyflowSinkSource
 
 from ilastik.applets.labeling.connectBlockedLabels import Neighborhood
+from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.labeling.pixelLabelExplorer import PixelLabelExplorerWidget
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
@@ -266,3 +272,119 @@ def test_sync_position(
 
     label_explorer.tableWidget.selectRow(0)
     assert positions == [{"c": 0.0, "x": 10.0, "y": 1.0, "z": 4.0}, {"c": 0.0, "x": 6.0, "y": 5.0, "z": 0.0}]
+
+
+@pytest.mark.parametrize(
+    "pipeline_variant",
+    [pytest.param("label_pipeline_blocked", id="blocked"), pytest.param("label_pipeline_non_blocked", id="dense")],
+)
+def test_delete_selected_annotations_undo_redo(qtbot, request, pipeline_variant):
+    pipeline = request.getfixturevalue(pipeline_variant)
+    output = pipeline.Output
+    if isinstance(pipeline, OpCompressedUserLabelArray):
+        pipeline.eraser.setValue(255)
+        input_slot, blocks = pipeline.Input, pipeline.nonzeroBlocks
+    else:
+        input_slot, blocks = pipeline.LabelSinkInput, pipeline.NonzeroBlocks
+        input_slot.meta.assignFrom(output.meta)
+    data = numpy.zeros(output.meta.shape, dtype="uint8")
+    # A ring surrounds another annotation of the same class and one of a different class.
+    data[0, 0:5, 0, 0] = data[0, 0:5, 4, 0] = 1
+    data[0, 0, 0:5, 0] = data[0, 4, 0:5, 0] = 1
+    data[0, 2, 2, 0] = 1
+    data[0, 2, 3, 0] = 2
+    # Another selected annotation spans four cache blocks, with transitive connections.
+    data[4, 8, 0:18, 0] = 1
+    input_slot[tuple(slice(0, size) for size in data.shape)] = data
+    explorer = PixelLabelExplorerWidget(blocks, output)
+    qtbot.addWidget(explorer)
+    explorer.show()
+    qtbot.waitExposed(explorer)
+    assert explorer.tableWidget.rowCount() == 4
+    stack = QUndoStack(explorer)
+    sink = LazyflowSinkSource(output, input_slot, eraser_value=255)
+    gui = SimpleNamespace(
+        _labelingSlots=SimpleNamespace(
+            labelInput=input_slot, labelOutput=output, labelEraserValue=SimpleNamespace(value=255)
+        ),
+        editor=SimpleNamespace(_undoStack=stack, brushingController=SimpleNamespace(_dataSink=sink)),
+    )
+    explorer.deleteRequested.connect(partial(LabelingGui._delete_explorer_annotations, gui, explorer))
+    explorer.tableWidget.sortItems(1, Qt.DescendingOrder)
+    for row in range(explorer.tableWidget.rowCount()):
+        item = explorer.tableWidget.item(row, 0)
+        anchor = item.data(Qt.UserRole + 1)
+        if anchor.position["z"] == 4 or anchor.position["x"] in (0, 4) or anchor.position["y"] in (0, 4):
+            explorer.tableWidget.selectionModel().select(
+                explorer.tableWidget.model().index(row, 0), QItemSelectionModel.Select | QItemSelectionModel.Rows
+            )
+    # Deleting and undoing update the table once, although several blocks are written.
+    with patch.object(explorer, "_populate_table", wraps=explorer._populate_table) as populate:
+        explorer._delete_selected()
+        populate.assert_called_once()
+    expected = numpy.zeros_like(data)
+    expected[0, 2, 2, 0] = 1
+    expected[0, 2, 3, 0] = 2
+    numpy.testing.assert_array_equal(output[:].wait(), expected)
+    assert explorer.tableWidget.rowCount() == 2
+    assert stack.count() == 1
+    with patch.object(explorer, "_populate_table", wraps=explorer._populate_table) as populate:
+        stack.undo()
+        populate.assert_called_once()
+    numpy.testing.assert_array_equal(output[:].wait(), data)
+    assert explorer.tableWidget.rowCount() == 4
+    stack.redo()
+    numpy.testing.assert_array_equal(output[:].wait(), expected)
+    assert explorer.tableWidget.rowCount() == 2
+    stack.undo()
+    # All four annotations have overlapping bounding boxes; deleting all of them leaves no labels.
+    explorer.tableWidget.selectAll()
+    explorer._delete_selected()
+    assert not output[:].wait().any()
+    assert explorer.tableWidget.rowCount() == 0
+    stack.undo()
+    numpy.testing.assert_array_equal(output[:].wait(), data)
+    explorer.cleanup()
+    sink.clean_up()
+
+
+@pytest.mark.parametrize("axiskeys", ["txyzc", "tzyxc"])
+def test_delete_annotation_preserves_other_timepoint(qtbot, graph, axiskeys):
+    shape = tuple({"t": 2, "x": 12, "y": 10, "z": 1, "c": 1}[k] for k in axiskeys)
+    data = vigra.taggedView(numpy.zeros(shape, dtype="uint8"), axiskeys)
+    with Pipeline(graph=graph) as pipeline:
+        pipeline.add(OpArrayPiper, Input=data)
+        cache = pipeline.add(
+            OpCompressedUserLabelArray,
+            blockShape=tuple({"t": 1, "x": 5, "y": 5, "z": 1, "c": 1}[k] for k in axiskeys),
+            eraser=255,
+        )
+        labels = data.copy()
+        labels.withAxes("txyzc")[:, 1:9, 2:3, 0, 0] = 1
+        cache.Input[tuple(slice(0, size) for size in shape)] = labels
+        explorer = PixelLabelExplorerWidget(cache.nonzeroBlocks, cache.Output)
+        qtbot.addWidget(explorer)
+        explorer.show()
+        qtbot.waitExposed(explorer)
+        assert explorer.tableWidget.rowCount() == 2
+        stack = QUndoStack(explorer)
+        sink = LazyflowSinkSource(cache.Output, cache.Input, eraser_value=255)
+        gui = SimpleNamespace(
+            _labelingSlots=SimpleNamespace(
+                labelInput=cache.Input, labelOutput=cache.Output, labelEraserValue=cache.eraser
+            ),
+            editor=SimpleNamespace(_undoStack=stack, brushingController=SimpleNamespace(_dataSink=sink)),
+        )
+        explorer.deleteRequested.connect(partial(LabelingGui._delete_explorer_annotations, gui, explorer))
+        for row in range(explorer.tableWidget.rowCount()):
+            if explorer.tableWidget.item(row, 0).data(Qt.UserRole)["t"] == 1:
+                explorer.tableWidget.selectRow(row)
+                break
+        explorer._delete_selected()
+        result = vigra.taggedView(cache.Output[:].wait(), axiskeys).withAxes("txyzc")
+        assert result[0].sum() == 8
+        assert not result[1].any()
+        stack.undo()
+        numpy.testing.assert_array_equal(cache.Output[:].wait(), labels)
+        explorer.cleanup()
+        sink.clean_up()

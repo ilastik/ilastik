@@ -24,9 +24,17 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from qtpy.QtCore import Qt, QTimer, Signal
+from qtpy.QtCore import QEvent, Qt, QTimer, Signal
 from qtpy.QtGui import QPaintEvent, QShowEvent
-from qtpy.QtWidgets import QAbstractItemView, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from qtpy.QtWidgets import (
+    QAbstractItemView,
+    QMenu,
+    QStyledItemDelegate,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 from volumina.utility import qabc
 from volumina.utility.qabc import QABCMeta
 
@@ -49,6 +57,7 @@ class LookupDelegate(QStyledItemDelegate):
 class AnnotationAnchor:
     label: int
     position: dict[Axiskey, float]
+    identifier: Any = None
 
 
 class LabelExplorerBase(QWidget, metaclass=QABCMeta):
@@ -70,6 +79,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
 
     # Should emit the position as a "tagged position"
     positionRequested = Signal(dict)
+    deleteRequested = Signal(list)
 
     @qabc.abstractmethod
     def initialize_table(self):
@@ -119,7 +129,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         self.tableWidget.setColumnCount(len(self._display_axiskeys) + 1)
         self.tableWidget.setHorizontalHeaderLabels(self._display_axiskeys + ["label"])
         self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.tableWidget.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tableWidget.horizontalHeader().setStretchLastSection(True)
         self.tableWidget.setSortingEnabled(True)
         self.tableWidget.setItemDelegateForColumn(
@@ -127,11 +137,55 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
         )
         self.setLayout(layout)
 
+        self.tableWidget.setToolTip("Right-click to delete the selected annotations")
+        self.tableWidget.viewport().installEventFilter(self)
+
         def _sync_viewer_position(currentRow, _currentColumn, _previousRow, _previousColumn):
-            position = self.tableWidget.item(currentRow, 0).data(Qt.UserRole)
-            self.positionRequested.emit(position)
+            item = self.tableWidget.item(currentRow, 0)
+            if item is not None:
+                self.positionRequested.emit(item.data(Qt.UserRole))
 
         self.tableWidget.currentCellChanged.connect(_sync_viewer_position)
+
+    def eventFilter(self, watched, event):
+        if watched is self.tableWidget.viewport():
+            if event.type() == QEvent.ContextMenu:
+                # Keep the event's original screen position, including across viewer/layout updates.
+                self._show_context_menu(event.pos(), event.globalPos())
+                return True
+        elif isinstance(watched, QMenu):
+            if event.type() == QEvent.Show:
+                # Qt has placed the menu at the click, shifted where needed to fit on screen.
+                watched.setProperty("annotationMenuPosition", watched.pos())
+            elif event.type() == QEvent.Move and watched.isVisible():
+                # Some window managers (e.g. Hyprland with XWayland) re-center popups after they appear.
+                position = watched.property("annotationMenuPosition")
+                if position is not None and watched.pos() != position:
+                    watched.move(position)
+        return super().eventFilter(watched, event)
+
+    def _show_context_menu(self, position, global_position):
+        item = self.tableWidget.itemAt(position)
+        if item is None:
+            return
+        # Keep a multi-selection when opening its menu; otherwise target the clicked row.
+        if not item.isSelected():
+            self.tableWidget.selectRow(item.row())
+        menu = QMenu(self.tableWidget)
+        menu.addAction("Delete selected annotations", self._delete_selected)
+        # Keep Qt's placement if the window manager moves the popup (see eventFilter).
+        menu.installEventFilter(self)
+        menu.exec_(global_position)
+        menu.deleteLater()
+
+    def _delete_selected(self):
+        # Snapshot identities before deletion triggers a table refresh (and possibly sorting).
+        annotations = [
+            self.tableWidget.item(index.row(), 0).data(Qt.UserRole + 1)
+            for index in self.tableWidget.selectionModel().selectedRows()
+        ]
+        if annotations:
+            self.deleteRequested.emit(annotations)
 
     def _item_lookup(self, item: str):
         return self._lookup_table.get(item, "NOT FOUND")
@@ -187,6 +241,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
 
     def _update_table_data(self, annotation_anchors: list[AnnotationAnchor]):
         with silent_qobject(self.tableWidget), self._ensure_no_sort():
+            self.tableWidget.clearSelection()
             self.tableWidget.setRowCount(len(annotation_anchors))
             for row, anchor in enumerate(annotation_anchors):
                 roi_center = anchor.position
@@ -195,6 +250,7 @@ class LabelExplorerBase(QWidget, metaclass=QABCMeta):
                     position_item.setFlags(self._item_flags)
                     position_item.setData(Qt.DisplayRole, int(roi_center[at]))
                     position_item.setData(Qt.UserRole, roi_center)
+                    position_item.setData(Qt.UserRole + 1, anchor)
                     self.tableWidget.setItem(row, i, position_item)
 
                 label_item = QTableWidgetItem(str(anchor.label))

@@ -41,6 +41,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 from volumina import colortables
+from volumina.brushingcontroller import DrawLabelCommand
 from lazyflow.slot import InputSlot, OutputSlot
 
 # ilastik
@@ -63,6 +64,23 @@ class Tool:
     Paint = 1
     Erase = 2
     Threshold = 3
+
+
+class DeleteAnnotationsCommand(DrawLabelCommand):
+    """Erase annotations with a single label write and a single label explorer update"""
+
+    def __init__(self, label_explorer: PixelLabelExplorerWidget, **kwargs):
+        super().__init__(**kwargs)
+        self.setText("Delete annotations")
+        self._label_explorer = label_explorer
+
+    def redo(self):
+        with self._label_explorer.batched_updates():
+            super().redo()
+
+    def undo(self):
+        with self._label_explorer.batched_updates():
+            super().undo()
 
 
 @dataclass
@@ -390,6 +408,7 @@ class LabelingGui(LayerViewerGui):
             self.volumeEditorWidget.editor.navCtrl.panSlicingViews(pos, [0, 1, 2])
 
         label_explorer_widget.positionRequested.connect(_goto)
+        label_explorer_widget.deleteRequested.connect(partial(self._delete_explorer_annotations, label_explorer_widget))
 
         def update_labels(*args, **kwargs):
             label_names = [x.name for x in self.labelListData]
@@ -402,6 +421,21 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.rowsRemoved.connect(update_labels)
 
         return label_explorer_widget
+
+    def _delete_explorer_annotations(self, label_explorer, annotations):
+        erasure = label_explorer.erasure_mask(annotations)
+        if erasure is None:
+            return
+        tagged_slicing, mask = erasure
+        slicing = tuple(tagged_slicing.get(k, slice(0, 1)) for k in "txyzc")
+        mask = mask.withAxes("txyzc")
+        sink = self.editor.brushingController._dataSink
+        # Keep only the erased pixels, so that redo and undo leave other labels in the bounding box untouched.
+        old_data = numpy.where(mask, sink.request(slicing).wait(), 0).astype("uint8")
+        labels = numpy.where(mask, self._labelingSlots.labelEraserValue.value, 0).astype("uint8")
+        self.editor._undoStack.push(
+            DeleteAnnotationsCommand(label_explorer, sink=sink, slicing=slicing, old_data=old_data, labels=labels)
+        )
 
     def _cleanup_label_explorer(self):
         wdgt = self.label_explorer_widget
